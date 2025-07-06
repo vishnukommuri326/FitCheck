@@ -1,118 +1,137 @@
  1 # StyleMate: Your AI Outfit Planner
-    2 
-    3 StyleMate is a cross-platform mobile application built with React Native (Expo) that functions as a weekly AI outfit planner. It aims to help users manage their
-      wardrobe and plan outfits efficiently, leveraging AI for smart suggestions.
-    4 
-    5 ## Features
-    6 
-    7 *   **User Management:** Secure user authentication (Login, Sign Up).
-    8 *   **Outfit Planning:** Plan outfits for specific dates.
-    9 *   **Garment Management:** Upload and tag your clothing items.
-   10 *   **AI-Powered Suggestions (Future):** Intelligent outfit recommendations based on user preferences and weather (planned).
-   11 *   **Amazon Product Advertising API Integration (Planned):** For affiliate listings of missing items.
-   12 
-   13 ## Data Models
-   14 
-   15 The application utilizes the following core data models:
-   16 
-   17 *   **User:**
-   18     *   `uid`: Unique user identifier.
-   19     *   `email`: User's email address.
-   20     *   `location`: User's geographical location.
-   21     *   `fcmToken`: Firebase Cloud Messaging token for notifications.
-   22     *   `workdays`: Array of numbers [0-6] representing working days.
-   23     *   `styleProfile`: String describing the user's style preferences.
-   24 *   **Garment:**
-   25     *   `id`: Unique garment identifier.
-   26     *   `ownerUid`: User ID of the garment owner.
-   27     *   `imageUrl`: URL to the garment's image.
-   28     *   `tags`: Array of strings for garment categorization (e.g., "casual", "summer", "shirt").
-   29     *   `uploadedAt`: Timestamp of when the garment was uploaded.
-   30 *   **OutfitPlan:**
-   31     *   `id`: Unique outfit plan identifier.
-   32     *   `ownerUid`: User ID of the outfit plan owner.
-   33     *   `date`: Date of the planned outfit (YYYY-MM-DD).
-   34     *   `items`: Array of garment IDs included in the outfit.
-   35     *   `description`: Text description of the outfit.
-   36     *   `generatedAt`: Timestamp of when the outfit plan was generated.
-   37 
-   38 ## Getting Started
-   39 
-   40 ### Prerequisites
-   41 
-   42 Before you begin, ensure you have the following installed:
-   43 
-   44 *   Node.js (LTS version recommended)
-   45 *   npm or Yarn
-   46 *   Expo CLI: `npm install -g expo-cli`
-   47 
-   48 ### Installation
-   49 
-   50 1.  **Clone the repository:**
-
-      git clone https://github.com/your-username/StyleMate.git
-      cd StyleMate
-
-   1 2.  **Install dependencies:**
-
-      npm install
-  or
-      yarn install
-
-   1 
-   2 ### Running the Application
-   3 
-   4 To run the application in development mode:
-
-  expo start
-
-
-   1 
-   2 This will open a new tab in your browser with Expo Dev Tools. You can then:
-   3 *   Scan the QR code with the Expo Go app on your physical device (iOS or Android).
-   4 *   Run on an Android emulator.
-   5 *   Run on an iOS simulator (macOS only).
-   6 *   Run in a web browser.
-   7 
-   8 ## Project Structure
-
-  .
-  ├── App.js              # Main application entry point
-  ├── app.json            # Expo configuration
-  ├── index.js            # Entry point for React Native
-  ├── package.json        # Project dependencies and scripts
-  ├── assets/             # Static assets (images, fonts)
-  ├── src/
-  │   ├── components/     # Reusable UI components
-  │   ├── navigation/     # Navigation setup (e.g., AppNavigator.js)
-  │   │   └── AppNavigator.js
-  │   ├── screens/        # Main application screens
-  │   │   ├── HomeScreen.js
-  │   │   ├── LoginScreen.js
-  │   │   └── SignUpScreen.js
-  │   └── styles/         # Externalized stylesheets
-  │       ├── HomeScreenStyles.js
-  │       ├── LoginScreenStyles.js
-  │       └── SignUpScreenStyles.js
-  └── README.md           # Project README (this file)
-
-
-    1 
-    2 ## Contributing
-    3 
-    4 Contributions are welcome! Please follow these steps:
-    5 
-    6 1.  Fork the repository.
-    7 2.  Create a new branch (`git checkout -b feature/your-feature-name`).
-    8 3.  Make your changes.
-    9 4.  Commit your changes (`git commit -m 'feat: Add new feature'`).
-   10 5.  Push to the branch (`git push origin feature/your-feature-name`).
-   11 6.  Open a Pull Request.
-   12 
-   13 ## License
-   14 
-   15 This project is licensed under the MIT License - see the LICENSE file for details. (Note: You might need to create a LICENSE file if you don't have one.)
-   16 
-   17 ## Contact
-   18 
-   19 For any questions or inquiries, please contact [Your Name/Email/GitHub Profile].
+ 2 
+ 3 StyleMate is a cross-platform mobile application built with React Native (Expo) that functions as a weekly AI outfit planner. It helps you digitize your wardrobe, select workdays, and receive a full week of weather-aware outfit suggestions—complete with swipe feedback and affiliate “shop missing items” links.
+ 4 
+ 5 ## Features
+ 6 
+ 7 * **User Management:** Secure authentication (Email/Password and Google SSO via Firebase Auth)
+ 8 * **Wardrobe Upload & Tagging:** Snap or select photos, upload to Firebase Storage, automatic tagging via Google Cloud Vision
+ 9 * **Weekly Outfit Planner:** Select workdays and generate a 7-day outfit plan based on local weather (OpenWeatherMap)
+10 * **Swipe Feedback:** Like/dislike outfits in a Tinder-style deck to refine your style profile (OpenAI Embeddings)
+11 * **Push Notifications:** Receive reminders when your plan is ready (Firebase Cloud Messaging)
+12 * **Affiliate Shopping:** “Shop missing items” via Amazon Product Advertising API
+13 
+14 ## Data Models
+15 
+16 **User**  
+17 - `uid` (string): Unique user identifier  
+18 - `email` (string): Email address  
+19 - `location` (string): City or GPS coordinates  
+20 - `fcmToken` (string): Firebase Cloud Messaging token  
+21 - `workdays` (number[]): Array indices 0–6 for Mon–Sun  
+22 - `styleProfile` (string): Summarized style preferences  
+23 
+24 **Garment**  
+25 - `id` (string): Unique garment identifier  
+26 - `ownerUid` (string): Reference to user `uid`  
+27 - `imageUrl` (string): URL of uploaded image  
+28 - `tags` (string[]): Auto-generated labels (e.g. “denim”, “shirt”)  
+29 - `uploadedAt` (timestamp): Upload time  
+30 
+31 **OutfitPlan**  
+32 - `id` (string): Unique plan identifier  
+33 - `ownerUid` (string): Reference to user `uid`  
+34 - `date` (string): ISO date (YYYY-MM-DD)  
+35 - `items` (string[]): Array of `Garment.id`  
+36 - `description` (string): Outfit summary  
+37 - `generatedAt` (timestamp): AI generation time  
+38 - `shoppingSuggestions` (object[]): Optional affiliate listings  
+39 
+40 **WeekPlan**  
+41 ```
+42 users/{uid}/plans/weekly/{weekStart}
+43   weekStart: Date
+44   createdAt: Timestamp
+45   outfitPlans/{day} → OutfitPlan
+46 ```
+47 
+48 **Preference**  
+49 - `planId` (string): Associated `OutfitPlan.id`  
+50 - `tags` (string[]): Tags from that outfit  
+51 - `liked` (boolean): true = like, false = dislike  
+52 - `timestamp` (timestamp): When feedback recorded  
+53 
+54 ## Installation & Setup
+55 
+56 1. **Clone & install dependencies**  
+57    ```bash
+58    git clone https://github.com/YOUR_USERNAME/StyleMate.git
+59    cd StyleMate
+60    npm install
+61    ```
+62 
+63 2. **Configure Firebase**  
+64    - Create a Firebase project; enable Auth, Firestore, Storage, Functions, Messaging  
+65    - Add your Firebase config to `app.json` or `src/firebaseConfig.js`  
+66    - Set function secrets:
+67      ```bash
+68      firebase functions:config:set openai.key="YOUR_OPENAI_KEY"
+69      firebase functions:config:set weather.key="YOUR_OWM_KEY"
+70      ```
+71 
+72 3. **Run the app**  
+73    ```bash
+74    npx expo start
+75    ```
+76    - Scan QR with Expo Go or press `w` for web  
+77 
+78 4. **Deploy Cloud Functions**  
+79    ```bash
+80    cd functions
+81    npm install
+82    firebase deploy --only functions
+83    ```
+84 
+85 ## Project Structure
+86 
+87 ```
+88 StyleMate/
+89 ├── App.js
+90 ├── index.js
+91 ├── app.json
+92 ├── package.json
+93 ├── assets/
+94 ├── src/
+95 │   ├── navigation/
+96 │   │   └── AppNavigator.js
+97 │   ├── screens/
+98 │   │   ├── LoginScreen.js
+99 │   │   ├── SignUpScreen.js
+100│   │   ├── HomeScreen.js
+101│   │   └── WardrobeScreen.js
+102│   └── firebaseConfig.js
+103└── functions/
+104
+105LICENSE
+106README.md
+107```
+108
+109## Security & Best Practices
+110
+111* Store API keys in environment variables or GCP Secret Manager
+112* Firestore Rules:
+113  ```js
+114  rules_version = '2';
+115  service cloud.firestore {
+116    match /databases/{db}/documents {
+117      match /users/{uid}/{doc=**} {
+118        allow read, write: if request.auth.uid == uid;
+119      }
+120    }
+121  }
+122  ```
+123* Use least-privilege IAM for service accounts
+124* Rotate keys regularly
+125* Run `npm audit` and configure Dependabot for dependencies
+126
+127## Contributing
+128
+1291. Fork the repository
+1302. Clone and `npm install`
+1313. Create a feature branch (`git checkout -b feature/name`)
+1324. Code, test, and commit
+1335. Push and open a Pull Request
+134
+135## License
+136
+137This project is licensed under the MIT License. See the `LICENSE` file for details.

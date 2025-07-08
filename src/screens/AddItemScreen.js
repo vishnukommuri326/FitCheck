@@ -123,7 +123,7 @@ const AddItemScreen = ({ navigation }) => {
                     accessibilityLabel="Take a photo"
                     accessibilityRole="button"
                   >
-                    <Ionicons name="camera" size={20} color="#0066FF" />
+                    <Ionicons name="camera" size={20} color="#F97316" />
                     <Text style={styles.uploadButtonText}>Camera</Text>
                   </TouchableOpacity>
                   
@@ -133,7 +133,7 @@ const AddItemScreen = ({ navigation }) => {
                     accessibilityLabel="Choose from gallery"
                     accessibilityRole="button"
                   >
-                    <Ionicons name="images" size={20} color="#0066FF" />
+                    <Ionicons name="images" size={20} color="#F97316" />
                     <Text style={styles.uploadButtonText}>Gallery</Text>
                   </TouchableOpacity>
                 </View>
@@ -147,7 +147,7 @@ const AddItemScreen = ({ navigation }) => {
                   accessibilityLabel="Change photo"
                   accessibilityRole="button"
                 >
-                  <Ionicons name="camera" size={16} color="#0066FF" />
+                  <Ionicons name="camera" size={16} color="#F97316" />
                   <Text style={styles.changePhotoText}>Change Photo</Text>
                 </TouchableOpacity>
               </View>
@@ -225,7 +225,7 @@ const AddItemScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#FFFBF5', // Warm cream background
   },
   keyboardView: {
     flex: 1,
@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#0066FF',
+    color: '#F97316', // Warm orange
   },
   imageContainer: {
     alignItems: 'center',
@@ -333,7 +333,7 @@ const styles = StyleSheet.create({
   changePhotoText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#0066FF',
+    color: '#F97316', // Warm orange
   },
   detailsCard: {
     marginHorizontal: 24,

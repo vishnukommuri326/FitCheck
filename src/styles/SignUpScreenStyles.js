@@ -3,7 +3,7 @@ import { StyleSheet, Platform } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#FFFBF5', // Warm cream background
   },
   keyboardView: {
     flex: 1,
@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     height: 52,
   },
   inputContainerFocused: {
-    borderColor: '#0066FF',
+    borderColor: '#F97316', // Orange focus color
     backgroundColor: '#FFFFFF',
   },
   inputIcon: {
@@ -125,8 +125,8 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   checkboxChecked: {
-    backgroundColor: '#0066FF',
-    borderColor: '#0066FF',
+    backgroundColor: '#F97316', // Orange for checked
+    borderColor: '#F97316',
   },
   termsText: {
     flex: 1,
@@ -135,13 +135,13 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   termsLink: {
-    color: '#0066FF',
+    color: '#EC4899', // Fashion pink for links
     fontWeight: '500',
   },
 
   // Sign Up Button
   signUpButton: {
-    backgroundColor: '#0066FF',
+    backgroundColor: '#F97316', // Warm orange
     borderRadius: 12,
     height: 52,
     justifyContent: 'center',
@@ -149,9 +149,9 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     ...Platform.select({
       ios: {
-        shadowColor: '#0066FF',
+        shadowColor: '#F97316',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
+        shadowOpacity: 0.3,
         shadowRadius: 8,
       },
       android: {
@@ -221,7 +221,7 @@ const styles = StyleSheet.create({
   loginLink: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#0066FF',
+    color: '#EC4899', // Fashion pink
   },
 });
 

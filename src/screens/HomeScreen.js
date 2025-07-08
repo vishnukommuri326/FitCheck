@@ -19,6 +19,14 @@ const HomeScreen = ({ navigation }) => {
     { id: 3, image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=200&h=200&fit=crop' },
   ];
 
+  const handleLogout = () => {
+    // Reset navigation stack and go to Login
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView 
@@ -27,10 +35,21 @@ const HomeScreen = ({ navigation }) => {
       >
         {/* Header */}
         <View style={styles.header}>
-          <View>
+          {/* Logout Button */}
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+          >
+            <Ionicons name="log-out-outline" size={24} color="#333333" />
+          </TouchableOpacity>
+
+          {/* Title block */}
+          <View style={styles.headerTitles}>
             <Text style={styles.greeting}>Good morning!</Text>
             <Text style={styles.title}>Let's style your day</Text>
           </View>
+
+          {/* Profile */}
           <TouchableOpacity 
             style={styles.profileButton}
             onPress={() => navigation.navigate('Profile')}
@@ -49,7 +68,7 @@ const HomeScreen = ({ navigation }) => {
               activeOpacity={0.7}
             >
               <View style={styles.actionIconContainer}>
-                <Ionicons name="camera-outline" size={24} color="#0066FF" />
+                <Ionicons name="camera-outline" size={24} color="#F97316" />
               </View>
               <Text style={styles.actionTitle}>Add Item</Text>
               <Text style={styles.actionSubtitle}>Snap & catalog</Text>
@@ -60,8 +79,8 @@ const HomeScreen = ({ navigation }) => {
               onPress={() => navigation.navigate('Recommendations')}
               activeOpacity={0.7}
             >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#F0FDF4' }]}>
-                <Ionicons name="sparkles" size={24} color="#10B981" />
+              <View style={[styles.actionIconContainer, { backgroundColor: '#FFE4EC' }]}>
+                <Ionicons name="sparkles" size={24} color="#EC4899" />
               </View>
               <Text style={styles.actionTitle}>Get Styled</Text>
               <Text style={styles.actionSubtitle}>AI suggestions</Text>
@@ -129,7 +148,7 @@ const HomeScreen = ({ navigation }) => {
           activeOpacity={0.8}
         >
           <View style={styles.wardrobeCTAContent}>
-            <Ionicons name="shirt-outline" size={24} color="#0066FF" />
+            <Ionicons name="shirt-outline" size={24} color="#F97316" />
             <View style={styles.wardrobeCTAText}>
               <Text style={styles.wardrobeCTATitle}>View Full Wardrobe</Text>
               <Text style={styles.wardrobeCTASubtitle}>Organize & plan your outfits</Text>
@@ -145,20 +164,27 @@ const HomeScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F7F8FA',
+    backgroundColor: '#FFFBF5',
   },
   scrollContent: {
     paddingBottom: 24,
   },
-  
-  // Header Styles
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 24,
+  },
+  logoutButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitles: {
+    flex: 1,
+    alignItems: 'center',
   },
   greeting: {
     fontSize: 14,
@@ -177,8 +203,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  
-  // Quick Actions Styles
   quickActionsCard: {
     marginHorizontal: 24,
     marginBottom: 20,
@@ -218,7 +242,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 12,
-    backgroundColor: '#EBF5FF',
+    backgroundColor: '#FFF1E6',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
@@ -230,11 +254,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   actionSubtitle: {
-    fontSize: 13,
+    fontSize: 13,  
     color: '#6B7280',
   },
-  
-  // Stats Styles
   statsContainer: {
     flexDirection: 'row',
     marginHorizontal: 24,
@@ -262,15 +284,13 @@ const styles = StyleSheet.create({
   statNumber: {
     fontSize: 24,
     fontWeight: '700',
-    color: '#0066FF',
+    color: '#F97316',
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 13,
     color: '#6B7280',
   },
-  
-  // Recent Items Styles
   recentSection: {
     marginBottom: 20,
   },
@@ -289,7 +309,7 @@ const styles = StyleSheet.create({
   seeAllText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#0066FF',
+    color: '#F97316',
   },
   recentItemsScroll: {
     paddingHorizontal: 24,
@@ -329,8 +349,6 @@ const styles = StyleSheet.create({
     borderColor: '#E2E5EA',
     borderStyle: 'dashed',
   },
-  
-  // Wardrobe CTA Styles
   wardrobeCTA: {
     marginHorizontal: 24,
     backgroundColor: '#FFFFFF',

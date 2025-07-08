@@ -108,7 +108,7 @@ const SignUpScreen = ({ navigation }) => {
                 <Ionicons 
                   name="person-outline" 
                   size={20} 
-                  color={nameFocused ? '#0066FF' : '#9CA3AF'} 
+                  color={nameFocused ? '#F97316' : '#9CA3AF'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -134,7 +134,7 @@ const SignUpScreen = ({ navigation }) => {
                 <Ionicons 
                   name="mail-outline" 
                   size={20} 
-                  color={emailFocused ? '#0066FF' : '#9CA3AF'} 
+                  color={emailFocused ? '#F97316' : '#9CA3AF'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -162,7 +162,7 @@ const SignUpScreen = ({ navigation }) => {
                 <Ionicons 
                   name="lock-closed-outline" 
                   size={20} 
-                  color={passwordFocused ? '#0066FF' : '#9CA3AF'} 
+                  color={passwordFocused ? '#F97316' : '#9CA3AF'} 
                   style={styles.inputIcon}
                 />
                 <TextInput
@@ -200,7 +200,7 @@ const SignUpScreen = ({ navigation }) => {
                 <Ionicons 
                   name="lock-closed-outline" 
                   size={20} 
-                  color={confirmPasswordFocused ? '#0066FF' : '#9CA3AF'} 
+                  color={confirmPasswordFocused ? '#F97316' : '#9CA3AF'} 
                   style={styles.inputIcon}
                 />
                 <TextInput

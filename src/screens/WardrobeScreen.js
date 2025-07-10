@@ -1,4 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
   Text,
@@ -15,23 +17,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import styles from '../styles/WardrobeScreenStyles.js';
 
-const dummyWardrobeItems = [
-  { id: '1', name: 'Blue Denim Jacket', type: 'Jacket', color: 'Blue', image: 'https://images.unsplash.com/photo-1495105787522-5334e3ffa0ef?w=400&h=400&fit=crop' },
-  { id: '2', name: 'White Cotton Tee', type: 'Top', color: 'White', image: 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400&h=400&fit=crop' },
-  { id: '3', name: 'Black Leather Jacket', type: 'Outerwear', color: 'Black', image: 'https://images.unsplash.com/photo-1551028719-00167b16eac5?w=400&h=400&fit=crop' },
-  { id: '4', name: 'Classic Sneakers', type: 'Footwear', color: 'White', image: 'https://images.unsplash.com/photo-1549298916-b41d501d3772?w=400&h=400&fit=crop' },
-  { id: '5', name: 'Floral Summer Dress', type: 'Dress', color: 'Floral', image: 'https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?w=400&h=400&fit=crop' },
-  { id: '6', name: 'Black Chinos', type: 'Bottom', color: 'Black', image: 'https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400&h=400&fit=crop' },
-];
-
-const categories = ['All', 'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories'];
+const categories = ['All', 'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
 
 // Separate component for animated items
 const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete }) => {
   const itemAnim = useRef(new Animated.Value(0)).current;
   const itemSlideAnim = useRef(new Animated.Value(30)).current;
 
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(itemAnim, {
         toValue: 1,
@@ -112,16 +105,16 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete }) => {
           activeOpacity={0.8}
           onPress={() => onPress(item)}
         >
-          <Image source={{ uri: item.image }} style={styles.itemImage} />
+          <Image source={{ uri: item.imageUri }} style={styles.itemImage} />
           <TouchableOpacity style={styles.favoriteButton}>
             <Ionicons name="heart-outline" size={20} color="#FFFFFF" />
           </TouchableOpacity>
           <View style={styles.itemInfo}>
-            <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-            <Text style={styles.itemDetails}>{item.type}</Text>
+            <Text style={styles.itemName} numberOfLines={1}>{item.itemName}</Text>
+            <Text style={styles.itemDetails}>{item.itemType}</Text>
             <View style={styles.colorRow}>
-              <View style={[styles.colorDot, { backgroundColor: item.color.toLowerCase() }]} />
-              <Text style={styles.colorText}>{item.color}</Text>
+              <View style={[styles.colorDot, { backgroundColor: item.itemColor.toLowerCase() }]} />
+              <Text style={styles.colorText}>{item.itemColor}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -130,20 +123,43 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete }) => {
   );
 };
 
-const WardrobeScreen = ({ navigation }) => {
+const WardrobeScreen = ({ navigation, route }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
-  
+  const [wardrobeItems, setWardrobeItems] = useState([]);
+
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
   const modalSlideAnim = useRef(new Animated.Value(300)).current;
 
+  const loadWardrobeItems = useCallback(async () => {
+    try {
+      const storedItems = await AsyncStorage.getItem('wardrobeItems');
+      if (storedItems) {
+        setWardrobeItems(JSON.parse(storedItems));
+      }
+    } catch (error) {
+      console.error('Failed to load wardrobe items:', error);
+    }
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadWardrobeItems();
+      if (route.params?.newItemAdded) {
+        // Optionally, you can do something with route.params.newItem here
+        // For now, just reloading all items is sufficient.
+        navigation.setParams({ newItemAdded: false }); // Reset the param
+      }
+    }, [route.params?.newItemAdded, loadWardrobeItems])
+  );
+
   // Animate on mount
-  React.useEffect(() => {
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -164,10 +180,10 @@ const WardrobeScreen = ({ navigation }) => {
     ]).start();
   }, []);
 
-  const filteredItems = dummyWardrobeItems.filter(item => {
-    const matchesCategory = selectedCategory === 'All' || item.type === selectedCategory;
-    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.color.toLowerCase().includes(searchQuery.toLowerCase());
+  const filteredItems = wardrobeItems.filter(item => {
+    const matchesCategory = selectedCategory === 'All' || item.itemType === selectedCategory;
+    const matchesSearch = item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         item.itemColor.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesCategory && matchesSearch;
   });
 
@@ -177,9 +193,20 @@ const WardrobeScreen = ({ navigation }) => {
     // Navigate to edit screen
   };
 
-  const handleDelete = (item) => {
-    console.log('Delete item:', item.name);
-    // Show confirmation dialog then delete
+  const handleDelete = async (itemToDelete) => {
+    console.log('Delete item:', itemToDelete.itemName);
+    try {
+      const existingItems = await AsyncStorage.getItem('wardrobeItems');
+      let items = existingItems ? JSON.parse(existingItems) : [];
+      const updatedItems = items.filter(item => item.id !== itemToDelete.id);
+      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(updatedItems));
+      setWardrobeItems(updatedItems);
+      console.log('Item deleted from AsyncStorage:', itemToDelete.itemName);
+      closeModal(); // Close modal if item was deleted from detail view
+    } catch (error) {
+      console.error('Error deleting item from AsyncStorage:', error);
+      alert('Failed to delete item. Please try again.');
+    }
   };
 
   const openItemDetail = (item) => {
@@ -396,25 +423,25 @@ const WardrobeScreen = ({ navigation }) => {
 
                   {/* Item Image */}
                   <Image 
-                    source={{ uri: selectedItem.image }} 
+                    source={{ uri: selectedItem.imageUri }} 
                     style={styles.modalImage}
                     resizeMode="cover"
                   />
 
                   {/* Item Info */}
                   <View style={styles.modalInfo}>
-                    <Text style={styles.modalItemName}>{selectedItem.name}</Text>
+                    <Text style={styles.modalItemName}>{selectedItem.itemName}</Text>
                     
                     <View style={styles.modalDetailsRow}>
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Type</Text>
-                        <Text style={styles.modalDetailValue}>{selectedItem.type}</Text>
+                        <Text style={styles.modalDetailValue}>{selectedItem.itemType}</Text>
                       </View>
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Color</Text>
                         <View style={styles.modalColorRow}>
-                          <View style={[styles.modalColorDot, { backgroundColor: selectedItem.color.toLowerCase() }]} />
-                          <Text style={styles.modalDetailValue}>{selectedItem.color}</Text>
+                          <View style={[styles.modalColorDot, { backgroundColor: selectedItem.itemColor.toLowerCase() }]} />
+                          <Text style={styles.modalDetailValue}>{selectedItem.itemColor}</Text>
                         </View>
                       </View>
                     </View>

@@ -140,6 +140,9 @@ export default StyleSheet.create({
   },
   
   // Item Card Styles
+  swipeableContainer: {
+    position: 'relative',
+  },
   itemContainer: {
     backgroundColor: '#FFFFFF',
     margin: 8,
@@ -206,6 +209,44 @@ export default StyleSheet.create({
     color: '#9CA3AF',
   },
   
+  // Swipe Action Styles
+  swipeActionsContainer: {
+    width: 150,
+    flexDirection: 'row',
+    height: '100%',
+  },
+  swipeAction: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 75,
+    height: '100%',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  editAction: {
+    backgroundColor: '#F97316',
+    borderTopLeftRadius: 16,
+    borderBottomLeftRadius: 16,
+  },
+  deleteAction: {
+    backgroundColor: '#EF4444',
+    borderTopRightRadius: 16,
+    borderBottomRightRadius: 16,
+    marginRight: 8,
+  },
+  actionButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    height: '100%',
+  },
+  actionText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  
   // Empty State Styles
   emptyState: {
     flex: 1,
@@ -264,5 +305,145 @@ export default StyleSheet.create({
         elevation: 8,
       },
     }),
+  },
+  
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '90%',
+    paddingBottom: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E5EA',
+  },
+  closeButton: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  favoriteButtonModal: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalImage: {
+    width: '100%',
+    height: 300,
+    backgroundColor: '#F3F4F6',
+  },
+  modalInfo: {
+    padding: 24,
+  },
+  modalItemName: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 16,
+  },
+  modalDetailsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: '#FFFBF5',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 24,
+  },
+  modalDetailItem: {
+    alignItems: 'center',
+  },
+  modalDetailLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  modalDetailValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  modalColorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  modalColorDot: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E5EA',
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 12,
+  },
+  modalTagsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  modalTag: {
+    backgroundColor: '#FFF1E6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+    marginBottom: 8,
+  },
+  modalTagText: {
+    fontSize: 14,
+    color: '#F97316',
+  },
+  modalNotes: {
+    fontSize: 14,
+    color: '#6B7280',
+    lineHeight: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 8,
+  },
+  modalActionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EC4899',
+    paddingVertical: 14,
+    borderRadius: 12,
+  },
+  modalEditButton: {
+    backgroundColor: '#FFF1E6',
+  },
+  modalActionText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });

@@ -15,7 +15,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 // TODO: Install expo-image-picker with: expo install expo-image-picker
 // import * as ImagePicker from 'expo-image-picker';
-// import styles from '../styles/AddItemScreenStyles';
 
 const AddItemScreen = ({ navigation }) => {
   const [imageUri, setImageUri] = useState(null);
@@ -23,63 +22,44 @@ const AddItemScreen = ({ navigation }) => {
   const [itemType, setItemType] = useState('');
   const [itemColor, setItemColor] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleImagePicker = async () => {
-    // Placeholder until expo-image-picker is installed
-    // const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    // 
-    // if (permissionResult.granted === false) {
-    //   alert("Permission to access camera roll is required!");
-    //   return;
-    // }
-    // 
-    // const result = await ImagePicker.launchImageLibraryAsync({
-    //   mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    //   allowsEditing: true,
-    //   aspect: [3, 4],
-    //   quality: 0.8,
-    // });
-    // 
-    // if (!result.canceled) {
-    //   setImageUri(result.assets[0].uri);
-    // }
-    
     // Temporary placeholder
     setImageUri('https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=600&fit=crop');
   };
 
   const handleCamera = async () => {
-    // Placeholder until expo-image-picker is installed
-    // const permissionResult = await ImagePicker.requestCameraPermissionsAsync();
-    // 
-    // if (permissionResult.granted === false) {
-    //   alert("Permission to access camera is required!");
-    //   return;
-    // }
-    // 
-    // const result = await ImagePicker.launchCameraAsync({
-    //   allowsEditing: true,
-    //   aspect: [3, 4],
-    //   quality: 0.8,
-    // });
-    // 
-    // if (!result.canceled) {
-    //   setImageUri(result.assets[0].uri);
-    // }
-    
     // Temporary placeholder
     setImageUri('https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=600&fit=crop');
   };
 
   const handleGetRecommendations = () => {
     if (!imageUri) return;
-    
-    navigation.navigate('Recommendations', {
-      imageUri,
-      itemName,
-      itemType,
-      itemColor,
-    });
+    setIsLoading(true);
+    setTimeout(() => {
+      setIsLoading(false);
+      navigation.navigate('Recommendations', {
+        imageUri,
+        itemName,
+        itemType,
+        itemColor,
+      });
+    }, 1000);
+  };
+
+  const handleAddItem = () => {
+    if (!imageUri || !itemName.trim()) {
+      alert('Please add a photo and enter an item name.');
+      return;
+    }
+    setIsSaving(true);
+    // Simulate save
+    setTimeout(() => {
+      setIsSaving(false);
+      // TODO: save to backend / Firestore
+      navigation.goBack();
+    }, 1000);
   };
 
   return (
@@ -198,24 +178,42 @@ const AddItemScreen = ({ navigation }) => {
           )}
         </ScrollView>
 
-        {/* Floating Action Button */}
+        {/* Action Buttons */}
         {imageUri && (
-          <TouchableOpacity 
-            style={styles.fab}
-            onPress={handleGetRecommendations}
-            activeOpacity={0.8}
-            accessibilityLabel="Get AI recommendations"
-            accessibilityRole="button"
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-                <Text style={styles.fabText}>Get Recommendations</Text>
-              </>
-            )}
-          </TouchableOpacity>
+          <View style={styles.actionBar}>
+            <TouchableOpacity 
+              style={styles.addItemButton}
+              onPress={handleAddItem}
+              activeOpacity={0.8}
+              accessibilityLabel="Add item"
+              accessibilityRole="button"
+            >
+              {isSaving ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
+                  <Text style={styles.addItemText}>Add Item</Text>
+                </>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={styles.fab}
+              onPress={handleGetRecommendations}
+              activeOpacity={0.8}
+              accessibilityLabel="Get AI recommendations"
+              accessibilityRole="button"
+            >
+              {isLoading ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <>
+                  <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                  <Text style={styles.fabText}>Get Recommendations</Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
         )}
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -225,13 +223,13 @@ const AddItemScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFBF5', // Warm cream background
+    backgroundColor: '#FFFBF5',
   },
   keyboardView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 100,
+    paddingBottom: 140,
   },
   header: {
     flexDirection: 'row',
@@ -309,7 +307,7 @@ const styles = StyleSheet.create({
   uploadButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#F97316', // Warm orange
+    color: '#F97316',
   },
   imageContainer: {
     alignItems: 'center',
@@ -333,7 +331,7 @@ const styles = StyleSheet.create({
   changePhotoText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#F97316', // Warm orange
+    color: '#F97316',
   },
   detailsCard: {
     marginHorizontal: 24,
@@ -378,35 +376,47 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E5EA',
   },
-  fab: {
+   actionBar: {
     position: 'absolute',
     bottom: 24,
     left: 24,
     right: 24,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  addItemButton: {
+    flex: 0.48,
+    marginRight: 16,            // <-- extra space to the right
+    backgroundColor: '#8B5CF6',
+    borderRadius: 28,
+    paddingVertical: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addItemText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginLeft: 8,
+  },
+  fab: {
+    flex: 0.8,
+    // marginLeft: 16,          // you can also use this instead of marginRight above
     backgroundColor: '#10B981',
     borderRadius: 28,
     paddingVertical: 16,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#10B981',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
   },
   fabText: {
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: -0.3,
+    marginLeft: 8,
   },
 });
 

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 // TODO: Install expo-image-picker with: expo install expo-image-picker
-// import * as ImagePicker from 'expo-image-picker';
+import * as ImagePicker from 'expo-image-picker';
 
 const AddItemScreen = ({ navigation }) => {
   const [imageUri, setImageUri] = useState(null);
@@ -25,13 +25,45 @@ const AddItemScreen = ({ navigation }) => {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleImagePicker = async () => {
-    // Temporary placeholder
-    setImageUri('https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=600&fit=crop');
+    // 1. Ask for gallery permission
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission to access gallery is required!');
+      return;
+    }
+
+    // 2. Launch image picker
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+    });
+
+    // 3. If user didn't cancel, save URI
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
   };
 
   const handleCamera = async () => {
-    // Temporary placeholder
-    setImageUri('https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=600&fit=crop');
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Permission to access camera is required!');
+      return;
+    }
+
+    // 2. Launch camera
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [3, 4],
+      quality: 0.8,
+    });
+
+    // 3. If user didn't cancel, save URI
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+    }
   };
 
   const handleGetRecommendations = () => {

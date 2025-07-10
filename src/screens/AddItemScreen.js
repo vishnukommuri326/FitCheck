@@ -1,4 +1,7 @@
+import 'react-native-get-random-values';
 import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { v4 as uuidv4 } from 'uuid';
 import {
   View,
   Text,
@@ -13,8 +16,12 @@ import {
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-// TODO: Install expo-image-picker with: expo install expo-image-picker
 import * as ImagePicker from 'expo-image-picker';
+import { Dimensions } from 'react-native';
+
+const { width } = Dimensions.get('window');
+
+const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
 
 const AddItemScreen = ({ navigation }) => {
   const [imageUri, setImageUri] = useState(null);
@@ -80,18 +87,35 @@ const AddItemScreen = ({ navigation }) => {
     }, 1000);
   };
 
-  const handleAddItem = () => {
+  const handleAddItem = async () => {
     if (!imageUri || !itemName.trim()) {
       alert('Please add a photo and enter an item name.');
       return;
     }
     setIsSaving(true);
-    // Simulate save
-    setTimeout(() => {
+
+    const newItem = {
+      id: uuidv4(),
+      imageUri,
+      itemName,
+      itemType,
+      itemColor,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    try {
+      const existingItems = await AsyncStorage.getItem('wardrobeItems');
+      const items = existingItems ? JSON.parse(existingItems) : [];
+      items.push(newItem);
+      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(items));
+      console.log('Item saved to AsyncStorage:', newItem);
+      navigation.navigate('Wardrobe', { newItemAdded: true, newItem });
+    } catch (error) {
+      console.error('Error saving item to AsyncStorage:', error);
+      alert('Failed to save item. Please try again.');
+    } finally {
       setIsSaving(false);
-      // TODO: save to backend / Firestore
-      navigation.goBack();
-    }, 1000);
+    }
   };
 
   return (
@@ -185,14 +209,27 @@ const AddItemScreen = ({ navigation }) => {
 
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Type</Text>
-                <TextInput
-                  style={styles.input}
-                  value={itemType}
-                  onChangeText={setItemType}
-                  placeholder="e.g., Jacket, Shirt, Pants"
-                  placeholderTextColor="#9CA3AF"
-                  accessibilityLabel="Item type"
-                />
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.categoryChipsContainer}>
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.categoryChip,
+                        itemType === category && styles.categoryChipActive,
+                      ]}
+                      onPress={() => setItemType(category)}
+                    >
+                      <Text
+                        style={[
+                          styles.categoryChipText,
+                          itemType === category && styles.categoryChipTextActive,
+                        ]}
+                      >
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
               </View>
 
               <View style={styles.inputContainer}>
@@ -407,6 +444,30 @@ const styles = StyleSheet.create({
     color: '#333333',
     borderWidth: 1,
     borderColor: '#E2E5EA',
+  },
+  categoryChipsContainer: {
+    paddingVertical: 4,
+  },
+  categoryChip: {
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E5EA',
+    marginRight: 8,
+    backgroundColor: '#F7F8FA',
+  },
+  categoryChipActive: {
+    backgroundColor: '#8B5CF6',
+    borderColor: '#8B5CF6',
+  },
+  categoryChipText: {
+    fontSize: 14,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+  categoryChipTextActive: {
+    color: '#FFFFFF',
   },
    actionBar: {
     position: 'absolute',

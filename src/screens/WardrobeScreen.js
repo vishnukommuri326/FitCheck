@@ -376,96 +376,98 @@ const WardrobeScreen = ({ navigation }) => {
           >
             {selectedItem && (
               <>
-                {/* Modal Header */}
-                <View style={styles.modalHeader}>
-                  <TouchableOpacity
-                    style={styles.closeButton}
-                    onPress={closeModal}
-                  >
-                    <Ionicons name="close" size={24} color="#333333" />
-                  </TouchableOpacity>
-                  <Text style={styles.modalTitle}>Item Details</Text>
-                  <TouchableOpacity
-                    style={styles.favoriteButtonModal}
-                    onPress={() => console.log('Toggle favorite')}
-                  >
-                    <Ionicons name="heart-outline" size={24} color="#EC4899" />
-                  </TouchableOpacity>
-                </View>
-
-                {/* Item Image */}
-                <Image 
-                  source={{ uri: selectedItem.image }} 
-                  style={styles.modalImage}
-                  resizeMode="cover"
-                />
-
-                {/* Item Info */}
-                <View style={styles.modalInfo}>
-                  <Text style={styles.modalItemName}>{selectedItem.name}</Text>
-                  
-                  <View style={styles.modalDetailsRow}>
-                    <View style={styles.modalDetailItem}>
-                      <Text style={styles.modalDetailLabel}>Type</Text>
-                      <Text style={styles.modalDetailValue}>{selectedItem.type}</Text>
-                    </View>
-                    <View style={styles.modalDetailItem}>
-                      <Text style={styles.modalDetailLabel}>Color</Text>
-                      <View style={styles.modalColorRow}>
-                        <View style={[styles.modalColorDot, { backgroundColor: selectedItem.color.toLowerCase() }]} />
-                        <Text style={styles.modalDetailValue}>{selectedItem.color}</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Additional Details */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Additional Details</Text>
-                    <View style={styles.modalTagsContainer}>
-                      <View style={styles.modalTag}>
-                        <Text style={styles.modalTagText}>Casual</Text>
-                      </View>
-                      <View style={styles.modalTag}>
-                        <Text style={styles.modalTagText}>Summer</Text>
-                      </View>
-                      <View style={styles.modalTag}>
-                        <Text style={styles.modalTagText}>Everyday</Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Notes Section */}
-                  <View style={styles.modalSection}>
-                    <Text style={styles.modalSectionTitle}>Notes</Text>
-                    <Text style={styles.modalNotes}>
-                      Perfect for casual outings. Goes well with denim or khakis.
-                    </Text>
-                  </View>
-
-                  {/* Action Buttons */}
-                  <View style={styles.modalActions}>
-                    <TouchableOpacity 
-                      style={styles.modalActionButton}
-                      onPress={() => {
-                        closeModal();
-                        setTimeout(() => {
-                          navigation.navigate('Recommendations', { item: selectedItem });
-                        }, 300);
-                      }}
+                <ScrollView showsVerticalScrollIndicator={false}>
+                  {/* Modal Header */}
+                  <View style={styles.modalHeader}>
+                    <TouchableOpacity
+                      style={styles.closeButton}
+                      onPress={closeModal}
                     >
-                      <Ionicons name="sparkles" size={20} color="#FFFFFF" />
-                      <Text style={styles.modalActionText}>Style This</Text>
+                      <Ionicons name="close" size={24} color="#333333" />
                     </TouchableOpacity>
+                    <Text style={styles.modalTitle}>Item Details</Text>
+                    <TouchableOpacity
+                      style={styles.favoriteButtonModal}
+                      onPress={() => console.log('Toggle favorite')}
+                    >
+                      <Ionicons name="heart-outline" size={24} color="#EC4899" />
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Item Image */}
+                  <Image 
+                    source={{ uri: selectedItem.image }} 
+                    style={styles.modalImage}
+                    resizeMode="cover"
+                  />
+
+                  {/* Item Info */}
+                  <View style={styles.modalInfo}>
+                    <Text style={styles.modalItemName}>{selectedItem.name}</Text>
                     
-                    <TouchableOpacity 
-                      style={[styles.modalActionButton, styles.modalEditButton]}
-                      onPress={() => handleEdit(selectedItem)}
-                    >
-                      <Ionicons name="pencil" size={20} color="#F97316" />
-                      <Text style={[styles.modalActionText, { color: '#F97316' }]}>Edit</Text>
-                    </TouchableOpacity>
+                    <View style={styles.modalDetailsRow}>
+                      <View style={styles.modalDetailItem}>
+                        <Text style={styles.modalDetailLabel}>Type</Text>
+                        <Text style={styles.modalDetailValue}>{selectedItem.type}</Text>
+                      </View>
+                      <View style={styles.modalDetailItem}>
+                        <Text style={styles.modalDetailLabel}>Color</Text>
+                        <View style={styles.modalColorRow}>
+                          <View style={[styles.modalColorDot, { backgroundColor: selectedItem.color.toLowerCase() }]} />
+                          <Text style={styles.modalDetailValue}>{selectedItem.color}</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Additional Details */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Additional Details</Text>
+                      <View style={styles.modalTagsContainer}>
+                        <View style={styles.modalTag}>
+                          <Text style={styles.modalTagText}>Casual</Text>
+                        </View>
+                        <View style={styles.modalTag}>
+                          <Text style={styles.modalTagText}>Summer</Text>
+                        </View>
+                        <View style={styles.modalTag}>
+                          <Text style={styles.modalTagText}>Everyday</Text>
+                        </View>
+                      </View>
+                    </View>
+
+                    {/* Notes Section */}
+                    <View style={styles.modalSection}>
+                      <Text style={styles.modalSectionTitle}>Notes</Text>
+                      <Text style={styles.modalNotes}>
+                        Perfect for casual outings. Goes well with denim or khakis.
+                      </Text>
+                    </View>
+
+                    {/* Action Buttons */}
+                    <View style={styles.modalActions}>
+                      <TouchableOpacity 
+                        style={styles.modalActionButton}
+                        onPress={() => {
+                          closeModal();
+                          setTimeout(() => {
+                            navigation.navigate('Recommendations', { item: selectedItem });
+                          }, 300);
+                        }}
+                      >
+                        <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                        <Text style={styles.modalActionText}>Style This</Text>
+                      </TouchableOpacity>
+                      
+                      <TouchableOpacity 
+                        style={[styles.modalActionButton, styles.modalEditButton]}
+                        onPress={() => handleEdit(selectedItem)}
+                      >
+                        <Ionicons name="pencil" size={20} color="#F97316" />
+                        <Text style={[styles.modalActionText, { color: '#F97316' }]}>Edit</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                </View>
+                </ScrollView>
               </>
             )}
           </Animated.View>

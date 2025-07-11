@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import styles from '../styles/HomeScreenStyles';
 
 const HomeScreen = ({ navigation }) => {
   // Get current date info
@@ -34,6 +35,38 @@ const HomeScreen = ({ navigation }) => {
   
   const weekDates = getWeekDates();
   const adjustedTodayIndex = currentDayIndex === 0 ? 6 : currentDayIndex - 1; // Adjust for Monday start
+  
+  // Same outfit data as WeeklyPlannerScreen
+  const weeklyOutfits = {
+    0: { 
+      image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=400&h=400&fit=crop', 
+      style: 'Casual Monday'
+    },
+    1: { 
+      image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=400&fit=crop', 
+      style: 'Business'
+    },
+    2: { 
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', 
+      style: 'Smart Casual'
+    },
+    3: { 
+      image: 'https://images.unsplash.com/photo-1516826957135-700dedea698c?w=400&h=400&fit=crop', 
+      style: 'WFH'
+    },
+    4: { 
+      image: 'https://images.unsplash.com/photo-1519406596751-0a3ccc4937fe?w=400&h=400&fit=crop', 
+      style: 'Friday'
+    },
+    5: { 
+      image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=400&fit=crop', 
+      style: 'Brunch'
+    },
+    6: { 
+      image: 'https://images.unsplash.com/photo-1480264104733-84fb0b925be3?w=400&h=400&fit=crop', 
+      style: 'Relaxed'
+    },
+  };
   // Dummy data for recent items
   const recentItems = [
     { id: 1, image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=200&fit=crop' },
@@ -159,7 +192,13 @@ const HomeScreen = ({ navigation }) => {
         <View style={styles.weeklyPlannerSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Weekly Outfit Planner</Text>
-            <TouchableOpacity style={styles.seeAllButton}>
+            <TouchableOpacity 
+              style={styles.seeAllButton}
+              onPress={() => {
+                console.log('Plan All button pressed');
+                navigation.navigate('WeeklyPlanner');
+              }}
+            >
               <Text style={styles.seeAllText}>Plan All</Text>
               <Ionicons name="arrow-forward" size={16} color="#F97316" />
             </TouchableOpacity>
@@ -181,14 +220,14 @@ const HomeScreen = ({ navigation }) => {
                   <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{day}</Text>
                   <Text style={styles.dayDate}>{weekDates[index]}</Text>
                   
-                  {index < 3 ? (
+                  {weeklyOutfits[index] ? (
                     <View style={styles.outfitPreview}>
                       <Image 
-                        source={{ uri: `https://images.unsplash.com/photo-${index === 0 ? '1490481651871-ab68de25d43a' : index === 1 ? '1487222477894-25f985cf4f1a' : '1539109395156-45b86144a7fe'}?w=150&h=150&fit=crop` }} 
+                        source={{ uri: weeklyOutfits[index].image }} 
                         style={styles.outfitImage}
                       />
                       <Text style={styles.outfitLabel}>
-                        {index === 0 ? 'Casual' : index === 1 ? 'Business' : 'Smart'}
+                        {weeklyOutfits[index].style}
                       </Text>
                     </View>
                   ) : (
@@ -208,288 +247,5 @@ const HomeScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFBF5', // Warm cream background
-  },
-  scrollContent: {
-    paddingBottom: 24,
-  },
-  
-  // Header Styles
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 24,
-  },
-  greeting: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#333333',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  profileButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  logoutButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  
-  // Quick Actions Styles
-  quickActionsCard: {
-    marginHorizontal: 24,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 16,
-  },
-  actionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actionButton: {
-    flex: 1,
-    backgroundColor: '#F7F8FA',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-  },
-  actionIconContainer: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
-    backgroundColor: '#FFF1E6', // Warm peach
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  actionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 4,
-  },
-  actionSubtitle: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  
-  // Stats Styles
-  statsContainer: {
-    flexDirection: 'row',
-    marginHorizontal: 24,
-    marginBottom: 24,
-    gap: 12,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#F97316', // Warm orange
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  
-  // Recent Items Styles
-  recentSection: {
-    marginBottom: 20,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 16,
-  },
-  seeAllButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  seeAllText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#F97316', // Warm orange
-  },
-  recentItemsScroll: {
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  recentItem: {
-    width: 100,
-    height: 130,
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
-  },
-  recentItemImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F3F4F6',
-  },
-  addMoreItem: {
-    width: 100,
-    height: 130,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#E2E5EA',
-    borderStyle: 'dashed',
-  },
-  
-  // Weekly Planner Styles
-  weeklyPlannerSection: {
-    marginBottom: 24,
-  },
-  weeklyPlannerScroll: {
-    paddingHorizontal: 24,
-    gap: 12,
-  },
-  dayCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 12,
-    width: 110,
-    marginRight: 12,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  dayLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#F97316',
-    marginBottom: 2,
-  },
-  dayDate: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 16,
-  },
-  outfitPreview: {
-    alignItems: 'center',
-  },
-  outfitImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    marginBottom: 8,
-    borderWidth: 2,
-    borderColor: '#FFE4EC',
-  },
-  outfitLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  addOutfitButton: {
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  addOutfitIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFF1E6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  addOutfitText: {
-    fontSize: 12,
-    color: '#F97316',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  dayCardToday: {
-    borderWidth: 2,
-    borderColor: '#F97316',
-  },
-  dayLabelToday: {
-    color: '#333333',
-    fontWeight: '700',
-  },
-});
 
 export default HomeScreen;

@@ -127,8 +127,14 @@ const WardrobeScreen = ({ navigation, route }) => {
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [wardrobeItems, setWardrobeItems] = useState([]);
+  
+  // Edit form states
+  const [editName, setEditName] = useState('');
+  const [editType, setEditType] = useState('');
+  const [editColor, setEditColor] = useState('');
 
   // Animation values
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -188,9 +194,43 @@ const WardrobeScreen = ({ navigation, route }) => {
   });
 
   const handleEdit = (item) => {
-    console.log('Edit item:', item.name);
+    console.log('Edit item:', item.itemName);
+    setSelectedItem(item);
+    setEditName(item.itemName);
+    setEditType(item.itemType);
+    setEditColor(item.itemColor);
     setModalVisible(false);
-    // Navigate to edit screen
+    setEditModalVisible(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editName || !editType || !editColor) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    try {
+      const updatedItem = {
+        ...selectedItem,
+        itemName: editName,
+        itemType: editType,
+        itemColor: editColor,
+      };
+
+      const existingItems = await AsyncStorage.getItem('wardrobeItems');
+      let items = existingItems ? JSON.parse(existingItems) : [];
+      const updatedItems = items.map(item => 
+        item.id === selectedItem.id ? updatedItem : item
+      );
+      
+      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(updatedItems));
+      setWardrobeItems(updatedItems);
+      setEditModalVisible(false);
+      console.log('Item updated successfully');
+    } catch (error) {
+      console.error('Error updating item:', error);
+      alert('Failed to update item. Please try again.');
+    }
   };
 
   const handleDelete = async (itemToDelete) => {
@@ -249,7 +289,7 @@ const WardrobeScreen = ({ navigation, route }) => {
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.goBack()}
+          onPress={() => navigation.navigate('Home')}
         >
           <Ionicons name="arrow-back" size={24} color="#333333" />
         </TouchableOpacity>
@@ -498,6 +538,111 @@ const WardrobeScreen = ({ navigation, route }) => {
               </>
             )}
           </Animated.View>
+        </View>
+      </Modal>
+
+      {/* Edit Item Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={editModalVisible}
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setEditModalVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#333333" />
+              </TouchableOpacity>
+              <Text style={styles.modalTitle}>Edit Item</Text>
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveEdit}
+              >
+                <Text style={styles.saveButtonText}>Save</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {selectedItem && (
+                <>
+                  {/* Item Image Preview */}
+                  <Image 
+                    source={{ uri: selectedItem.imageUri }} 
+                    style={styles.editImagePreview}
+                    resizeMode="cover"
+                  />
+
+                  {/* Edit Form */}
+                  <View style={styles.editForm}>
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>Item Name</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editName}
+                        onChangeText={setEditName}
+                        placeholder="Enter item name"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>Type</Text>
+                      <ScrollView 
+                        horizontal 
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.typeSelector}
+                      >
+                        {categories.filter(cat => cat !== 'All').map((type) => (
+                          <TouchableOpacity
+                            key={type}
+                            style={[
+                              styles.typeChip,
+                              editType === type && styles.typeChipActive
+                            ]}
+                            onPress={() => setEditType(type)}
+                          >
+                            <Text style={[
+                              styles.typeChipText,
+                              editType === type && styles.typeChipTextActive
+                            ]}>
+                              {type}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </ScrollView>
+                    </View>
+
+                    <View style={styles.inputContainer}>
+                      <Text style={styles.inputLabel}>Color</Text>
+                      <TextInput
+                        style={styles.textInput}
+                        value={editColor}
+                        onChangeText={setEditColor}
+                        placeholder="Enter color"
+                        placeholderTextColor="#9CA3AF"
+                      />
+                    </View>
+
+                    {/* Delete Button */}
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => {
+                        setEditModalVisible(false);
+                        handleDelete(selectedItem);
+                      }}
+                    >
+                      <Ionicons name="trash-outline" size={20} color="#EF4444" />
+                      <Text style={styles.deleteButtonText}>Delete Item</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              )}
+            </ScrollView>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>

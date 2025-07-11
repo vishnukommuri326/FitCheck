@@ -22,8 +22,8 @@ const AppNavigator = () => {
       <Stack.Navigator initialRouteName="Home">
         <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
         <Stack.Screen name="SignUp" component={SignUpScreen} options={{ headerShown: false }} />
-        <Stack.Screen name="Home" component={HomeScreen} options={{ title: 'StyleMate' }} />
-        <Stack.Screen name="Wardrobe" component={WardrobeScreen} options={{ title: 'My Wardrobe' }} />
+        <Stack.Screen name="Home" component={HomeScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="Wardrobe" component={WardrobeScreen} options={{ headerShown: false }} />
         <Stack.Screen name="AddItem" component={AddItemScreen} options={{ title: 'Add Item' }} />
         <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ title: 'AI Recommendations' }} />
         <Stack.Screen name="WeeklyPlanner" component={WeeklyPlannerScreen} options={{ headerShown: false }} />

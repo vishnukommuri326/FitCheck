@@ -20,7 +20,7 @@ import styles from '../styles/WardrobeScreenStyles.js';
 const categories = ['All', 'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
 
 // Separate component for animated items
-const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete }) => {
+const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMode }) => {
   const itemAnim = useRef(new Animated.Value(0)).current;
   const itemSlideAnim = useRef(new Animated.Value(30)).current;
 
@@ -103,7 +103,7 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete }) => {
         <TouchableOpacity 
           style={styles.itemContainer} 
           activeOpacity={0.8}
-          onPress={() => onPress(item)}
+          onPress={() => onPress(item, selectMode)}
         >
           <Image source={{ uri: item.imageUri }} style={styles.itemImage} />
           <TouchableOpacity style={styles.favoriteButton}>
@@ -124,6 +124,7 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete }) => {
 };
 
 const WardrobeScreen = ({ navigation, route }) => {
+  const { selectMode, selectedDayIndex } = route.params || {};
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
@@ -250,15 +251,19 @@ const WardrobeScreen = ({ navigation, route }) => {
   };
 
   const openItemDetail = (item) => {
-    setSelectedItem(item);
-    setModalVisible(true);
-    // Animate modal in
-    Animated.spring(modalSlideAnim, {
-      toValue: 0,
-      friction: 9,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
+    if (selectMode) {
+      navigation.navigate('WeeklyPlanner', { selectedItem: item, selectedDayIndex: selectedDayIndex });
+    } else {
+      setSelectedItem(item);
+      setModalVisible(true);
+      // Animate modal in
+      Animated.spring(modalSlideAnim, {
+        toValue: 0,
+        friction: 9,
+        tension: 40,
+        useNativeDriver: true,
+      }).start();
+    }
   };
 
   const closeModal = () => {
@@ -280,6 +285,7 @@ const WardrobeScreen = ({ navigation, route }) => {
       onPress={openItemDetail}
       onEdit={handleEdit}
       onDelete={handleDelete}
+      selectMode={selectMode}
     />
   );
 
@@ -512,6 +518,18 @@ const WardrobeScreen = ({ navigation, route }) => {
 
                     {/* Action Buttons */}
                     <View style={styles.modalActions}>
+                      {selectMode && (
+                        <TouchableOpacity
+                          style={[styles.modalActionButton, styles.addToPlannerButton]}
+                          onPress={() => {
+                            closeModal();
+                            navigation.navigate('WeeklyPlanner', { selectedItem: selectedItem, selectedDayIndex: selectedDayIndex });
+                          }}
+                        >
+                          <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
+                          <Text style={styles.modalActionText}>Add to Planner</Text>
+                        </TouchableOpacity>
+                      )}
                       <TouchableOpacity 
                         style={styles.modalActionButton}
                         onPress={() => {

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,33 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/HomeScreenStyles';
 
 const HomeScreen = ({ navigation }) => {
+  const [profileImage, setProfileImage] = useState(null);
+
+  useEffect(() => {
+    const loadProfileImage = async () => {
+      try {
+        const savedImage = await AsyncStorage.getItem('profileImage');
+        if (savedImage) {
+          setProfileImage(savedImage);
+        }
+      } catch (error) {
+        console.error('Failed to load profile image from AsyncStorage:', error);
+      }
+    };
+
+    loadProfileImage();
+
+    // Add a listener for when the screen is focused to reload the image
+    const unsubscribe = navigation.addListener('focus', () => {
+      loadProfileImage();
+    });
+
+    return unsubscribe;
+  }, [navigation]);
   // Get current date info
   const today = new Date();
   const currentDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -91,7 +115,11 @@ const HomeScreen = ({ navigation }) => {
               style={styles.profileButton}
               onPress={() => navigation.navigate('Profile')}
             >
-              <Ionicons name="person-circle-outline" size={32} color="#333333" />
+              {profileImage ? (
+                <Image source={{ uri: profileImage }} style={styles.profileImage} />
+              ) : (
+                <Ionicons name="person-circle-outline" size={32} color="#333333" />
+              )}
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.logoutButton}

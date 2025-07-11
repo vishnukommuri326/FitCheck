@@ -441,6 +441,9 @@ export default StyleSheet.create({
   modalEditButton: {
     backgroundColor: '#FFF1E6',
   },
+  addToPlannerButton: {
+    backgroundColor: '#F97316',
+  },
   modalActionText: {
     fontSize: 16,
     fontWeight: '600',

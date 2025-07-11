@@ -188,7 +188,7 @@ const HomeScreen = ({ navigation }) => {
               style={styles.seeAllButton}
             >
               <Text style={styles.seeAllText}>See all</Text>
-              <Ionicons name="arrow-forward" size={16} color="#0066FF" />
+              <Ionicons name="arrow-forward" size={16} color="#F97316" />
             </TouchableOpacity>
           </View>
           

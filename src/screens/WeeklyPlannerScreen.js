@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,13 +12,74 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-const WeeklyPlannerScreen = ({ navigation }) => {
+const WeeklyPlannerScreen = ({ navigation, route }) => {
   const [selectedDay, setSelectedDay] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [selectedOutfit, setSelectedOutfit] = useState(null);
   const [editingOutfit, setEditingOutfit] = useState(null);
-  
+
+  // Dummy outfit data - expanded with more outfits
+  const outfits = {
+    0: {
+      image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=400&h=400&fit=crop',
+      style: 'Casual Monday',
+      items: ['Blue Jeans', 'White T-Shirt', 'Denim Jacket']
+    },
+    1: {
+      image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=400&fit=crop',
+      style: 'Business',
+      items: ['Suit Jacket', 'Dress Shirt', 'Trousers']
+    },
+    2: {
+      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+      style: 'Smart Casual',
+      items: ['Chinos', 'Polo Shirt', 'Loafers']
+    },
+    3: {
+      image: 'https://images.unsplash.com/photo-1516826957135-700dedea698c?w=400&h=400&fit=crop',
+      style: 'WFH',
+      items: ['Sweatpants', 'Hoodie', 'Slippers']
+    },
+    4: {
+      image: 'https://images.unsplash.com/photo-1519406596751-0a3ccc4937fe?w=400&h=400&fit=crop',
+      style: 'Friday',
+      items: ['Jeans', 'Graphic Tee', 'Sneakers']
+    },
+    5: {
+      image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=400&fit=crop',
+      style: 'Brunch',
+      items: ['Sundress', 'Sandals', 'Sun Hat']
+    },
+    6: {
+      image: 'https://images.unsplash.com/photo-1480264104733-84fb0b925be3?w=400&h=400&fit=crop',
+      style: 'Relaxed',
+      items: ['Shorts', 'Tank Top', 'Flip-Flops']
+    },
+  };
+  const [weeklyOutfits, setWeeklyOutfits] = useState(outfits); // Use a state for outfits
+
+  useEffect(() => {
+    if (route.params?.selectedItem && route.params?.selectedDayIndex !== undefined) {
+      const { selectedItem, selectedDayIndex } = route.params;
+      handleAddItemToOutfit(selectedItem, selectedDayIndex);
+      navigation.setParams({ selectedItem: undefined, selectedDayIndex: undefined }); // Clear params
+    }
+  }, [route.params?.selectedItem, route.params?.selectedDayIndex]);
+
+  const handleAddItemToOutfit = (item, dayIndex) => {
+    setWeeklyOutfits(prevOutfits => ({
+      ...prevOutfits,
+      [dayIndex]: {
+        image: item.imageUri,
+        style: 'Custom Outfit',
+        items: prevOutfits[dayIndex] ? [...prevOutfits[dayIndex].items, item.itemName] : [item.itemName],
+      },
+    }));
+    setEditModalVisible(false);
+    setModalVisible(false);
+  };
+
   // Get current date info
   const today = new Date();
   const currentDayIndex = today.getDay();
@@ -47,51 +108,12 @@ const WeeklyPlannerScreen = ({ navigation }) => {
   
   const weekDates = getWeekDates();
   
-  // Dummy outfit data - expanded with more outfits
-  const outfits = {
-    0: { 
-      image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=400&h=400&fit=crop', 
-      style: 'Casual Monday', 
-      items: ['Blue Jeans', 'White Tee', 'Sneakers'] 
-    },
-    1: { 
-      image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=400&fit=crop', 
-      style: 'Business Meeting', 
-      items: ['Navy Suit', 'White Shirt', 'Oxford Shoes'] 
-    },
-    2: { 
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', 
-      style: 'Smart Casual', 
-      items: ['Chinos', 'Button-up Shirt', 'Loafers'] 
-    },
-    3: { 
-      image: 'https://images.unsplash.com/photo-1516826957135-700dedea698c?w=400&h=400&fit=crop', 
-      style: 'Work From Home', 
-      items: ['Comfort Joggers', 'Henley Shirt', 'Slides'] 
-    },
-    4: { 
-      image: 'https://images.unsplash.com/photo-1519406596751-0a3ccc4937fe?w=400&h=400&fit=crop', 
-      style: 'Friday Vibes', 
-      items: ['Denim Jacket', 'Graphic Tee', 'Canvas Shoes'] 
-    },
-    5: { 
-      image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=400&fit=crop', 
-      style: 'Weekend Brunch', 
-      items: ['Linen Shirt', 'Shorts', 'White Sneakers'] 
-    },
-    6: { 
-      image: 'https://images.unsplash.com/photo-1480264104733-84fb0b925be3?w=400&h=400&fit=crop', 
-      style: 'Sunday Relaxed', 
-      items: ['Hoodie', 'Sweatpants', 'Comfortable Shoes'] 
-    },
-  };
-  
   const handleDayPress = (index) => {
     setSelectedDay(index);
-    if (outfits[index]) {
+    if (weeklyOutfits[index]) {
       // If outfit exists, show edit options
-      setSelectedOutfit(outfits[index]);
-      setEditingOutfit({ ...outfits[index], dayIndex: index });
+      setSelectedOutfit(weeklyOutfits[index]);
+      setEditingOutfit({ ...weeklyOutfits[index], dayIndex: index });
       setEditModalVisible(true);
     } else {
       // If no outfit, show add options
@@ -101,13 +123,13 @@ const WeeklyPlannerScreen = ({ navigation }) => {
   
   const handleEditPress = (index) => {
     setSelectedDay(index);
-    setSelectedOutfit(outfits[index]);
-    setEditingOutfit({ ...outfits[index], dayIndex: index });
+    setSelectedOutfit(weeklyOutfits[index]);
+    setEditingOutfit({ ...weeklyOutfits[index], dayIndex: index });
     setEditModalVisible(true);
   };
   
   const renderDayCard = (dayInfo, index) => {
-    const hasOutfit = outfits[index];
+    const hasOutfit = weeklyOutfits[index];
     
     return (
       <TouchableOpacity
@@ -275,8 +297,7 @@ const WeeklyPlannerScreen = ({ navigation }) => {
                     style={styles.editActionButton}
                     onPress={() => {
                       setEditModalVisible(false);
-                      // Navigate to change outfit items
-                      navigation.navigate('Wardrobe', { selectMode: true });
+                      navigation.navigate('Wardrobe', { selectMode: true, selectedDayIndex: selectedDay });
                     }}
                   >
                     <Ionicons name="shirt-outline" size={20} color="#F97316" />

@@ -17,10 +17,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
 import styles from '../styles/WardrobeScreenStyles.js';
 
-const categories = ['All', 'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
+const categories = ['All', 'Favorites', 'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
 
 // Separate component for animated items
-const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMode }) => {
+const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMode, onToggleFavorite }) => {
   const itemAnim = useRef(new Animated.Value(0)).current;
   const itemSlideAnim = useRef(new Animated.Value(30)).current;
 
@@ -106,8 +106,8 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMo
           onPress={() => onPress(item, selectMode)}
         >
           <Image source={{ uri: item.imageUri }} style={styles.itemImage} />
-          <TouchableOpacity style={styles.favoriteButton}>
-            <Ionicons name="heart-outline" size={20} color="#FFFFFF" />
+          <TouchableOpacity style={styles.favoriteButton} onPress={() => onToggleFavorite(item.id)} testID={`favorite-button-${item.id}`}>
+            <Ionicons name={item.isFavorite ? "heart" : "heart-outline"} size={20} color="#FFFFFF" testID={`favorite-icon-${item.id}`} />
           </TouchableOpacity>
           <View style={styles.itemInfo}>
             <Text style={styles.itemName} numberOfLines={1}>{item.itemName}</Text>
@@ -147,12 +147,34 @@ const WardrobeScreen = ({ navigation, route }) => {
     try {
       const storedItems = await AsyncStorage.getItem('wardrobeItems');
       if (storedItems) {
-        setWardrobeItems(JSON.parse(storedItems));
+        const parsedItems = JSON.parse(storedItems);
+        // Ensure all items have an isFavorite property
+        const itemsWithFavorites = parsedItems.map(item => ({
+          ...item,
+          isFavorite: item.isFavorite !== undefined ? item.isFavorite : false,
+        }));
+        setWardrobeItems(itemsWithFavorites);
       }
     } catch (error) {
       console.error('Failed to load wardrobe items:', error);
     }
   }, []);
+
+  const toggleFavorite = async (itemId) => {
+    try {
+      const updatedItems = wardrobeItems.map(item =>
+        item.id === itemId ? { ...item, isFavorite: !item.isFavorite } : item
+      );
+      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(updatedItems));
+      setWardrobeItems(updatedItems);
+      // If the favorited item is currently in the modal, update its state too
+      if (selectedItem && selectedItem.id === itemId) {
+        setSelectedItem(prev => ({ ...prev, isFavorite: !prev.isFavorite }));
+      }
+    } catch (error) {
+      console.error('Failed to toggle favorite status:', error);
+    }
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -188,10 +210,16 @@ const WardrobeScreen = ({ navigation, route }) => {
   }, []);
 
   const filteredItems = wardrobeItems.filter(item => {
-    const matchesCategory = selectedCategory === 'All' || item.itemType === selectedCategory;
     const matchesSearch = item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.itemColor.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesCategory && matchesSearch;
+    
+    if (selectedCategory === 'All') {
+      return matchesSearch;
+    } else if (selectedCategory === 'Favorites') {
+      return item.isFavorite && matchesSearch;
+    } else { // Specific category like 'Tops', 'Bottoms', etc.
+      return item.itemType === selectedCategory && matchesSearch;
+    }
   });
 
   const handleEdit = (item) => {
@@ -286,6 +314,7 @@ const WardrobeScreen = ({ navigation, route }) => {
       onEdit={handleEdit}
       onDelete={handleDelete}
       selectMode={selectMode}
+      onToggleFavorite={toggleFavorite}
     />
   );
 
@@ -461,9 +490,9 @@ const WardrobeScreen = ({ navigation, route }) => {
                     <Text style={styles.modalTitle}>Item Details</Text>
                     <TouchableOpacity
                       style={styles.favoriteButtonModal}
-                      onPress={() => console.log('Toggle favorite')}
+                      onPress={() => toggleFavorite(selectedItem.id)}
                     >
-                      <Ionicons name="heart-outline" size={24} color="#EC4899" />
+                      <Ionicons name={selectedItem.isFavorite ? "heart" : "heart-outline"} size={24} color="#EC4899" />
                     </TouchableOpacity>
                   </View>
 

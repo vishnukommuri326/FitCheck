@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/LoginScreenStyles';
+import { useAuth } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
@@ -21,6 +22,8 @@ const LoginScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
+
+  const { login } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -39,7 +42,7 @@ const LoginScreen = ({ navigation }) => {
     // Simulate API call
     setTimeout(() => {
       setIsLoading(false);
-      console.log('Login attempt with:', email);
+      login(email, password);
       navigation.navigate('Home');
     }, 1500);
   };

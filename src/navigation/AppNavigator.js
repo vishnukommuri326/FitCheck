@@ -10,6 +10,9 @@ import AddItemScreen from '../screens/AddItemScreen';
 import RecommendationsScreen from '../screens/RecommendationsScreen';
 import WeeklyPlannerScreen from '../screens/WeeklyPlannerScreen';
 import ProfileScreen from '../screens/ProfileScreen';
+import EditProfileScreen from '../screens/EditProfileScreen';
+import ChangeEmailScreen from '../screens/ChangeEmailScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 const Stack = createStackNavigator();
 
@@ -25,6 +28,9 @@ const AppNavigator = () => {
         <Stack.Screen name="Recommendations" component={RecommendationsScreen} options={{ title: 'AI Recommendations' }} />
         <Stack.Screen name="WeeklyPlanner" component={WeeklyPlannerScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

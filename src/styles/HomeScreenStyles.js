@@ -40,6 +40,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  profileImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+  },
   logoutButton: {
     width: 44,
     height: 44,

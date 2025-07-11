@@ -49,6 +49,12 @@ const styles = StyleSheet.create({
   profileIcon: {
     marginBottom: 10,
   },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginBottom: 10,
+  },
   userName: {
     fontSize: 22,
     fontWeight: '600',

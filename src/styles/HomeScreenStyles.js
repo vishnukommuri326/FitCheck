@@ -286,6 +286,102 @@ const styles = StyleSheet.create({
     color: '#333333',
     fontWeight: '700',
   },
+  scannerSection: {
+    marginHorizontal: 24,
+    marginBottom: 24,
+  },
+
+  // The card itself
+  scannerCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  },
+
+  // Header row: icon + text
+  scannerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+
+  // Icon circle
+  scannerIconContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#FFF1E6', // Warm peach
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+
+  // Text next to icon
+  scannerTextContainer: {
+    flex: 1,
+  },
+  scannerTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+  },
+  scannerSubtitle: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+
+  // Description under header
+  scannerDescription: {
+    fontSize: 14,
+    color: '#6B7280',
+    marginBottom: 16,
+    lineHeight: 20,
+  },
+
+  // Start Scanning button
+  scanButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#F97316',   // Brand orange
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 16,
+  },
+  scanButtonText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  // Feature list below button
+  scannerFeatures: {
+    marginTop: 8,
+  },
+  featureItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  featureText: {
+    fontSize: 13,
+    color: '#6B7280',
+    marginLeft: 8,
+  },
+
 });
 
 export default styles;

@@ -215,7 +215,7 @@ const ScannerScreen = ({ navigation }) => {
                 
                 <TouchableOpacity 
                   style={styles.addToWardrobeButton}
-                  onPress={() => navigation.navigate('AddItem')}
+                  onPress={() => navigation.navigate('AddItem', { imageUri: scannedImage })}
                 >
                   <Ionicons name="add-circle-outline" size={20} color="#FFFFFF" />
                   <Text style={styles.addToWardrobeText}>Add to Wardrobe</Text>

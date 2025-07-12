@@ -18,13 +18,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Dimensions } from 'react-native';
+import { useRoute } from '@react-navigation/native';
+
 
 const { width } = Dimensions.get('window');
 
 const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
 
+
+
 const AddItemScreen = ({ navigation }) => {
-  const [imageUri, setImageUri] = useState(null);
+  const route = useRoute();
+  const [imageUri, setImageUri] = useState(route.params?.imageUri || null);
   const [itemName, setItemName] = useState('');
   const [itemType, setItemType] = useState('');
   const [itemColor, setItemColor] = useState('');
@@ -89,7 +94,7 @@ const AddItemScreen = ({ navigation }) => {
 
   const handleAddItem = async () => {
     if (!imageUri || !itemName.trim()) {
-      alert('Please add a photo and enter an item name.');
+      alert('Please add a name, color, and item name.');
       return;
     }
     setIsSaving(true);

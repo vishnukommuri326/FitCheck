@@ -110,11 +110,11 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMo
             <Ionicons name={item.isFavorite ? "heart" : "heart-outline"} size={20} color="#FFFFFF" testID={`favorite-icon-${item.id}`} />
           </TouchableOpacity>
           <View style={styles.itemInfo}>
-            <Text style={styles.itemName} numberOfLines={1}>{item.itemName}</Text>
+            <Text style={styles.itemName} numberOfLines={1}>{item.itemName || ''}</Text>
             <Text style={styles.itemDetails}>{item.itemType}</Text>
             <View style={styles.colorRow}>
-              <View style={[styles.colorDot, { backgroundColor: item.itemColor.toLowerCase() }]} />
-              <Text style={styles.colorText}>{item.itemColor}</Text>
+              <View style={[styles.colorDot, { backgroundColor: (item.itemColor || '#000000').toLowerCase() }]} />
+              <Text style={styles.colorText}>{item.itemColor || ''}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -210,8 +210,8 @@ const WardrobeScreen = ({ navigation, route }) => {
   }, []);
 
   const filteredItems = wardrobeItems.filter(item => {
-    const matchesSearch = item.itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         item.itemColor.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (item.itemColor || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     if (selectedCategory === 'All') {
       return matchesSearch;
@@ -515,8 +515,8 @@ const WardrobeScreen = ({ navigation, route }) => {
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Color</Text>
                         <View style={styles.modalColorRow}>
-                          <View style={[styles.modalColorDot, { backgroundColor: selectedItem.itemColor.toLowerCase() }]} />
-                          <Text style={styles.modalDetailValue}>{selectedItem.itemColor}</Text>
+                          <View style={[styles.modalColorDot, { backgroundColor: (selectedItem.itemColor || '#000000').toLowerCase() }]} />
+                          <Text style={styles.modalDetailValue}>{selectedItem.itemColor || ''}</Text>
                         </View>
                       </View>
                     </View>

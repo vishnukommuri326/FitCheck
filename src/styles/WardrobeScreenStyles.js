@@ -81,13 +81,15 @@ export default StyleSheet.create({
   
   // Categories Styles
   categoriesContainer: {
-    paddingHorizontal: 24,
-    paddingBottom: 16,
-    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
   },
   categoryChip: {
+    minWidth: 80,
+    height: 36, // Add this
+    justifyContent: 'center', // Add this
+    alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
     marginRight: 8,
@@ -113,7 +115,7 @@ export default StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 24,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   statsText: {
     fontSize: 14,
@@ -249,11 +251,11 @@ export default StyleSheet.create({
   
   // Empty State Styles
   emptyState: {
-    flex: 1,
-    justifyContent: 'center',
+  
     alignItems: 'center',
+    paddingTop: 24, // Add padding from the top
     paddingHorizontal: 48,
-    paddingBottom: 100,
+    paddingBottom: 240,
   },
   emptyTitle: {
     fontSize: 20,

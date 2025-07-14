@@ -70,7 +70,7 @@ const LoginScreen = ({ navigation }) => {
           {/* Login Form Card */}
           <View style={styles.formCard}>
             <Text style={styles.welcomeText}>Welcome back</Text>
-            <Text style={styles.subtitleText}>Sign in to continue to StyleMate</Text>
+            <Text style={styles.subtitleText}>Sign in to continue to FitCheck</Text>
 
             {/* Email Input */}
             <View style={styles.inputSection}>

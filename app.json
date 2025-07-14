@@ -19,7 +19,7 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription":
-          ""StyleMate uses your location to tailor outfit suggestions by weather""
+          "StyleMate uses your location to tailor outfit suggestions by weather"
       }
     },
     "android": {

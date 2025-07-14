@@ -61,27 +61,32 @@ const ProfileScreen = ({ navigation }) => {
   }
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync()
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permission required',
-        'Please grant media library permissions to select a photo.'
-      )
-      return
-    }
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission required',
+          'Please grant media library permissions to select a photo.'
+        );
+        return;
+      }
 
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaType.Images,
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 1,
-    })
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: 'Images',
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 1,
+      });
 
-    if (!result.canceled) {
-      setProfileImage(result.assets[0].uri)
-      await AsyncStorage.setItem('profileImage', result.assets[0].uri)
+      if (!result.canceled) {
+        setProfileImage(result.assets[0].uri);
+        await AsyncStorage.setItem('profileImage', result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error in pickImage function:', error);
+      Alert.alert('An Error Occurred', 'Could not open the image library.');
     }
-  }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -123,6 +128,12 @@ const ProfileScreen = ({ navigation }) => {
             onPress={() => navigation.navigate('EditProfile')}
           >
             <Text style={styles.editProfileButtonText}>Edit Profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.changePictureButton}
+            onPress={pickImage}
+          >
+            <Text style={styles.changePictureButtonText}>Change Picture</Text>
           </TouchableOpacity>
         </View>
 

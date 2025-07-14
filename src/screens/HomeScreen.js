@@ -9,7 +9,7 @@ import {
   Image,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/HomeScreenStyles';
 
@@ -118,7 +118,7 @@ const HomeScreen = ({ navigation }) => {
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.profileImage} />
               ) : (
-                <Ionicons name="person-circle-outline" size={32} color="#333333" />
+                <MaterialIcons name="account-circle" size={32} color="#333333" />
               )}
             </TouchableOpacity>
             <TouchableOpacity 

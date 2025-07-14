@@ -17,6 +17,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';
+import styles from '../styles/OutfitSwiperScreenStyles';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -78,13 +79,13 @@ export default function OutfitSwiper({ navigation }) {
   const resetPosition = () => {
     Animated.spring(pan, {
       toValue: { x: 0, y: 0 },
-      useNativeDriver: false,
+      useNativeDriver: true,
       tension: 40,
       friction: 8,
     }).start();
     Animated.spring(rotateValue, {
       toValue: 0,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   };
 
@@ -93,7 +94,7 @@ export default function OutfitSwiper({ navigation }) {
     Animated.timing(pan, {
       toValue: { x, y: 0 },
       duration: 300,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start(() => {
       setCurrentIndex(prevIndex => prevIndex + 1);
       pan.setValue({ x: 0, y: 0 });
@@ -217,7 +218,7 @@ export default function OutfitSwiper({ navigation }) {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={28} color="#1F2937" />
+            <Ionicons name="chevron-back-outline" size={32} color="#333333" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Discover Styles</Text>
           <View style={{ width: 44 }} />
@@ -371,7 +372,7 @@ export default function OutfitSwiper({ navigation }) {
           style={[styles.actionButton, styles.likeButton]}
           onPress={handleSwipeRight}
         >
-          <Ionicons name="heart" size={32} color="#10B981" />
+          <Ionicons name="heart-outline" size={40} color="#4CAF50" />
         </TouchableOpacity>
       </View>
 
@@ -396,7 +397,7 @@ export default function OutfitSwiper({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>What didn't you like?</Text>
               <TouchableOpacity onPress={skipDislikeReason} style={styles.modalCloseButton}>
-                <Ionicons name="close" size={24} color="#6B7280" />
+                <Ionicons name="close-outline" size={28} color="#616161" />
               </TouchableOpacity>
             </View>
             
@@ -436,373 +437,3 @@ export default function OutfitSwiper({ navigation }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFBFC',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.3,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  progressContainer: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  progressBar: {
-    flex: 1,
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4F46E5',
-    borderRadius: 2,
-  },
-  progressText: {
-    fontSize: 13,
-    color: '#6B7280',
-    fontWeight: '500',
-  },
-  cardContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    marginTop: -40,
-  },
-  card: {
-    position: 'absolute',
-    width: screenWidth - 40,
-    height: screenHeight * 0.68,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.12,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  cardImageContainer: {
-    flex: 1,
-    position: 'relative',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    overflow: 'hidden',
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#F3F4F6',
-  },
-  gradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 200,
-  },
-  cardContent: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 12,
-  },
-  cardBrand: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontWeight: '500',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: 4,
-  },
-  cardDescription: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.3,
-  },
-  infoButton: {
-    padding: 4,
-  },
-  tagContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  tag: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-  },
-  tagText: {
-    fontSize: 13,
-    color: '#4F46E5',
-    fontWeight: '600',
-  },
-  likeIndicator: {
-    position: 'absolute',
-    top: 60,
-    left: 20,
-    backgroundColor: '#10B981',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    transform: [{ rotate: '-20deg' }],
-  },
-  likeText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  dislikeIndicator: {
-    position: 'absolute',
-    top: 60,
-    right: 20,
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 12,
-    transform: [{ rotate: '20deg' }],
-  },
-  dislikeText: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
-  actionButtons: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 40,
-    paddingHorizontal: 60,
-    gap: 24,
-  },
-  actionButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  dislikeButton: {
-    borderWidth: 2,
-    borderColor: '#FEE2E2',
-  },
-  superLikeButton: {
-    borderWidth: 2,
-    borderColor: '#DBEAFE',
-  },
-  likeButton: {
-    borderWidth: 2,
-    borderColor: '#D1FAE5',
-  },
-  noMoreCards: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  noMoreIconContainer: {
-    marginBottom: 24,
-  },
-  noMoreCardsTitle: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1F2937',
-    marginBottom: 12,
-    letterSpacing: -0.5,
-  },
-  noMoreCardsText: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginBottom: 32,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  resetButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 30,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 6,
-      },
-    }),
-  },
-  resetButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  modalBackdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    padding: 24,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: -4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 20,
-      },
-    }),
-  },
-  modalHandle: {
-    width: 48,
-    height: 4,
-    backgroundColor: '#E5E7EB',
-    borderRadius: 2,
-    alignSelf: 'center',
-    marginBottom: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  modalTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1F2937',
-    letterSpacing: -0.5,
-  },
-  modalCloseButton: {
-    padding: 4,
-  },
-  modalSubtitle: {
-    fontSize: 15,
-    color: '#6B7280',
-    marginBottom: 24,
-    lineHeight: 22,
-  },
-  textInput: {
-    borderWidth: 1.5,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    padding: 16,
-    fontSize: 16,
-    color: '#1F2937',
-    minHeight: 120,
-    backgroundColor: '#F9FAFB',
-    textAlignVertical: 'top',
-    lineHeight: 24,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  skipButton: {
-    backgroundColor: '#F3F4F6',
-  },
-  skipButtonText: {
-    color: '#6B7280',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#4F46E5',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  submitButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: '700',
-  },
-});

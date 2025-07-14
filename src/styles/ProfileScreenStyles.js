@@ -77,6 +77,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
+  changePictureButton: {
+    marginTop: 10,
+    backgroundColor: '#F3F4F6',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 25,
+  },
+  changePictureButtonText: {
+    color: '#333333',
+    fontSize: 16,
+    fontWeight: '600',
+  },
   section: {
     marginHorizontal: 24,
     marginBottom: 20,

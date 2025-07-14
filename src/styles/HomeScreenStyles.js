@@ -78,8 +78,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   actionsGrid: {
-    flexDirection: 'row',
-    gap: 12,
+  flexDirection: 'row',
+  gap: 12,
+  flexWrap: 'wrap',  
   },
   actionButton: {
     flex: 1,

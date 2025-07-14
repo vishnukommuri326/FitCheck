@@ -151,6 +151,18 @@ const HomeScreen = ({ navigation }) => {
 
             <TouchableOpacity 
               style={styles.actionButton}
+              onPress={() => navigation.navigate('OutfitSwiper')}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIconContainer, { backgroundColor: '#E0E7FF' }]}>
+                <Ionicons name="heart-outline" size={24} color="#4F46E5" />
+              </View>
+              <Text style={styles.actionTitle}>Swipe Outfits</Text>
+              <Text style={styles.actionSubtitle}>Find your style</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionButton}
               onPress={() => navigation.navigate('Recommendations')}
               activeOpacity={0.7}
             >

@@ -14,6 +14,7 @@ import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangeEmailScreen from '../screens/ChangeEmailScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 import ScannerScreen from '../screens/ScannerScreen';
+import OutfitSwiper from '../screens/OutfitSwiperScreen.js';
 
 const Stack = createStackNavigator();
 
@@ -33,6 +34,8 @@ const AppNavigator = () => {
         <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ headerShown: false }} />
         <Stack.Screen name="Scanner" component={ScannerScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="OutfitSwiper" component={OutfitSwiper} options={{ headerShown: false }} />
+        
       </Stack.Navigator>
     </NavigationContainer>
   );

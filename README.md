@@ -5,7 +5,7 @@
 [![Expo](https://img.shields.io/badge/Expo-SDK%2046-6E6E6E.svg)](https://expo.dev/)  
 [![React Native](https://img.shields.io/badge/React%20Native-0.79.5-61DAFB.svg)](https://reactnative.dev/)  
 
-> **Your AI-powered personal stylist** — digitize your closet, pick your work days, and receive a **7-day, weather-aware outfit plan** with swipe feedback and “shop missing items” links.
+> **Your AI-powered personal stylist** — digitize your closet, refine your style through swipes, generate weather-aware weekly plans, and even test new purchases in-store before you buy.
 
 ---
 
@@ -17,7 +17,7 @@
 4. [📐 Architecture & Data Model](#-architecture--data-model)  
 5. [💻 Installation & Local Development](#-installation--local-development)  
 6. [📱 Usage Guide](#-usage-guide)  
-7. [🔧 Code Snippets & Configuration](#-code-snippets--configuration)  
+7. [🔧 Fashion Methodology & Style Guides](#-fashion-methodology--style-guides)  
 8. [🔒 Security & Best Practices](#-security--best-practices)  
 9. [🤝 Contributing](#-contributing)  
 10. [📄 License](#-license)  
@@ -28,25 +28,33 @@
 
 - **🔐 Authentication**  
   Email/password & Google SSO via Firebase Auth  
-- **📸 Wardrobe Upload & Tagging**  
+- **📸 Wardrobe Catalog**  
   Snap or pick photos → Firebase Storage → auto-tag via Google Vision  
-- **🗓 7-Day Outfit Planner**  
-  Select workdays → Cloud Function generates daily looks using your wardrobe + local forecast  
-- **💬 Swipe Feedback**  
-  Like/dislike outfits in a Tinder-style deck to refine your personal style profile  
+- **🗓 Weekly Planner**  
+  Select your workdays → AI generates a **7-day, weather-aware outfit schedule**  
+- **💬 Like/Dislike Feedback**  
+  Swipe through outfits “Tinder-style” and optionally explain why you disliked something to refine your style profile  
+- **🛒 In-Store Matching**  
+  Snap a photo of an item in a store → instantly see what it pairs with in your home closet  
+- **🏬 Shop Missing Items**  
+  Affiliate links via Amazon Product Advertising API for pieces you’re missing  
 - **🔔 Push Notifications**  
   Daily or weekly reminders via Firebase Cloud Messaging  
-- **🛍 Affiliate Shopping**  
-  “Shop missing items” using Amazon Product Advertising API  
 
 ---
 
 ## 🎯 Why StyleMate?
 
-- **Save Time**: Plan your outfits for the entire week in seconds.  
-- **Stay Stylish**: Suggestions adapt to rain, heat, or wind.  
-- **Learn Your Taste**: Simple swipes personalize recommendations.  
-- **Shop Effortlessly**: Buy any piece you don’t own directly from the app.  
+- **Plan Your Week**  
+  Never scramble each morning—get a full week of outfits tailored to forecast and your taste.  
+- **Learn by Doing**  
+  Every swipe and text-reason you give teaches the AI *why* you like or dislike an outfit.  
+- **Shop with Confidence**  
+  Instantly validate store finds against your existing wardrobe before you buy.  
+- **Expert-Backed Guidance**  
+  Powered by color theory, silhouette balance, and occasion-appropriate styling—so suggestions feel intentional.  
+- **Addictive Interaction**  
+  Quick swipes, in-store matches, and daily reveals keep you engaged.
 
 ---
 
@@ -55,7 +63,7 @@
 | Layer               | Technology                                           |
 |---------------------|-------------------------------------------------------|
 | **Mobile**          | Expo-managed React Native, React Navigation           |
-| **Backend**         | Firebase (Auth, Firestore, Storage, Functions, FCM)   |
+| **Auth & Data**     | Firebase Auth, Firestore, Storage, Functions, FCM     |
 | **Vision & AI**     | Google Cloud Vision, OpenAI Embeddings & Completions |
 | **Weather**         | OpenWeatherMap One Call API                           |
 | **Shopping**        | Amazon Product Advertising API                        |
@@ -72,29 +80,27 @@ users/{uid} {
 users/{uid}/garments/{garmentId} {
   imageUrl, tags:[String], uploadedAt
 }
-users/{uid}/plans/weekly/{weekStart} {
-  weekStart:Date, createdAt:Timestamp
+users/{uid}/preferences/{prefId} {
+  planId, tags:[String], liked:Boolean, reasonText?, timestamp
 }
 users/{uid}/plans/weekly/{weekStart}/outfitPlans/{day} {
-  date, items:[garmentId], description, shoppingSuggestions:[{title,image,price,affiliateUrl}], generatedAt
-}
-users/{uid}/preferences/{prefId} {
-  planId, tags:[String], liked:Boolean, timestamp
+  date, items:[garmentId], description, shoppingSuggestions:[…], generatedAt
 }
 ````
 
-**Flow:**
+**Data Flow**
 
-1. **Upload →** Firestore metadata → Cloud Function tags via Vision API.
-2. **Generate →** Cloud Function fetches forecast, loads tags & styleProfile, prompts OpenAI → writes WeekPlan + OutfitPlans + shopping suggestions.
-3. **Feedback →** swipe writes Preference → CF aggregates into styleProfile.
-4. **Notify →** CF sends FCM push with deep-link to Week’s Looks.
+1. **Upload** → Firestore writes + Vision tags
+2. **Plan** → fetch forecast + user profile → prompt OpenAI → store weekly plan
+3. **Feedback** → swipe or reasonText → update `preferences` → update `styleProfile`
+4. **In-Store** → snap & match via AI → surface top home items
+5. **Notify** → FCM pushes daily/weekly reminders
 
 ---
 
 ## 💻 Installation & Local Development
 
-1. **Clone & install dependencies**
+1. **Clone & install**
 
    ```bash
    git clone https://github.com/vishnukommuri326/StyleMate.git
@@ -103,21 +109,21 @@ users/{uid}/preferences/{prefId} {
    ```
 2. **Configure Firebase**
 
-   * Create a Firebase project; enable Auth, Firestore, Storage, Functions, Messaging.
-   * Copy your `firebaseConfig` into `src/firebaseConfig.js` or `app.json`.
-   * Set Cloud Function secrets:
+   * Enable Auth, Firestore, Storage, Functions, Messaging
+   * Create `src/firebaseConfig.js` with your Firebase settings
+   * Set function secrets:
 
      ```bash
      firebase functions:config:set openai.key="YOUR_OPENAI_KEY"
      firebase functions:config:set weather.key="YOUR_OWM_KEY"
      ```
-3. **Run your app**
+3. **Run the app**
 
    ```bash
    npx expo start
    ```
 
-   * Scan the QR code with Expo Go (mobile) or press `w` to run in browser.
+   *Scan the QR code with Expo Go or press `w` to run on web.*
 4. **Deploy Cloud Functions**
 
    ```bash
@@ -130,74 +136,51 @@ users/{uid}/preferences/{prefId} {
 
 ## 📱 Usage Guide
 
-1. **Sign Up / Sign In** with email or Google.
-2. **Onboarding**: enter city & select workday checkboxes.
-3. **Upload** at least 5 garment photos.
-4. **Plan Your Week**: tap “Generate Weekly Plan.”
-5. **View Week’s Looks**: scroll daily outfit cards (weather + images).
-6. **Swipe** to refine your taste.
-7. **Shop** any missing item via affiliate carousel.
-8. **Receive Notifications** when new plans are ready.
+1. **Sign Up / Log In**
+2. **Onboarding**: grant location & pick your weekly workdays
+3. **Catalog** at least 5 garments in your closet
+4. **Generate Weekly Plan**: tap “Generate Plan” for a full 7-day schedule
+5. **Swipe Feedback**: like/dislike outfits to train your AI stylist (with optional reason text)
+6. **In-Store Matching**: in a shop? tap “Match in Closet,” snap a photo, and see which home pieces pair best
+7. **Shop Missing**: view affiliate links for suggested pieces you don't own
+8. **Get Reminders** via push notifications for new plans or sale alerts
 
 ---
 
-## 🔧 Code Snippets & Configuration
+## 🔧 Fashion Methodology & Style Guides
 
-### Firestore Security Rule
+We embed industry-proven style principles in our AI prompts to ensure recommendations feel thoughtful:
 
-```js
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{db}/documents {
-    match /users/{uid}/{doc=**} {
-      allow read, write: if request.auth.uid == uid;
-    }
-  }
-}
-```
-
-### Sample OpenAI Prompt
-
-```js
-const prompt = `
-You are a stylist. Wardrobe tags:
-- ${tags.join('\n- ')}
-
-7-day forecast for ${location}:
-${forecast.map(d=>`${d.day}: High ${d.temp.max}°C, ${d.weather[0].description}`).join('\n')}
-
-Workdays: ${workdays.join(', ')}  
-Style profile: ${styleProfile}
-
-Respond with JSON: [{"day":"Mon","items":["..."],"explanation":"..."}, …]
-`;
-```
+* **Color Theory**: complementary, analogous, triadic palettes
+* **Silhouette & Proportion**: balancing fitted vs. relaxed, layering hierarchies
+* **Texture & Contrast**: mixing fabrics and patterns for depth
+* **Occasion & Function**: tailoring looks for work, casual, evening, or seasonal needs
 
 ---
 
 ## 🔒 Security & Best Practices
 
-* **Secrets** in env or Secret Manager
-* **Least Privilege** for service accounts
-* **Key Rotation** quarterly
+* **Secrets** via Firebase Functions config
+* **Least Privilege** in Firestore security rules
 * **Dependency Audits** with `npm audit` & Dependabot
-* **Crash Reporting**: Firebase Crashlytics & CF Logging
+* **Crash Reporting** via Firebase Crashlytics & Cloud Functions logs
 
 ---
 
 ## 🤝 Contributing
 
 1. Fork & clone
-2. `npm install` → create branch
-3. Code & test
-4. `git push origin your-branch` → open PR
-5. We’ll review & merge
+2. `npm install` → create a feature branch
+3. Implement & test your changes
+4. `git push origin your-branch` → open a Pull Request
+5. We’ll review, iterate, and merge
 
 ---
 
 ## 📄 License
 
-This project is licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
+Licensed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
 ```
+::contentReference[oaicite:0]{index=0}
 ```

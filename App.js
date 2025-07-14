@@ -10,3 +10,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+// PR Test: Small change for validation

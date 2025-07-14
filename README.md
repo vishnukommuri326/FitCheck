@@ -1,5 +1,5 @@
 
-# 🎨 StyleMate
+# 🎨 FitCheck
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)  
 [![Expo](https://img.shields.io/badge/Expo-SDK%2046-6E6E6E.svg)](https://expo.dev/)  
@@ -43,7 +43,7 @@
 
 ---
 
-## 🎯 Why StyleMate?
+## 🎯 Why FitCheck?
 
 - **Plan Your Week**  
   Never scramble each morning—get a full week of outfits tailored to forecast and your taste.  

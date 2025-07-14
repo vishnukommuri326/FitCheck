@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "StyleMate",
-    "slug": "StyleMate",
+    "name": "FitCheck",
+    "slug": "FitCheck",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
       },
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription":
-          "StyleMate uses your location to tailor outfit suggestions by weather"
+          "FitCheck uses your location to tailor outfit suggestions by weather"
       }
     },
     "android": {

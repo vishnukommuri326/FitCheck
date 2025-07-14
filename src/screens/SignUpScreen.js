@@ -92,7 +92,7 @@ const SignUpScreen = ({ navigation }) => {
           <View style={styles.headerSection}>
             <Text style={styles.headerTitle}>Create Account</Text>
             <Text style={styles.headerSubtitle}>
-              Join StyleMate to start building your perfect wardrobe
+              Join FitCheck to start building your perfect wardrobe
             </Text>
           </View>
 

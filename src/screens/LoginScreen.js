@@ -63,7 +63,7 @@ const LoginScreen = ({ navigation }) => {
             <View style={styles.logoContainer}>
               <Ionicons name="shirt" size={48} color="#F97316" />
             </View>
-            <Text style={styles.brandName}>StyleMate</Text>
+            <Text style={styles.brandName}>FitCheck</Text>
             <Text style={styles.tagline}>Your AI Fashion Assistant</Text>
           </View>
 

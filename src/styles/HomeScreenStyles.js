@@ -80,9 +80,11 @@ const styles = StyleSheet.create({
   actionsGrid: {
     flexDirection: 'row',
     gap: 12,
+    flexWrap: 'wrap',
   },
   actionButton: {
     flex: 1,
+    minWidth: '30%',  // Add this to ensure proper sizing
     backgroundColor: '#F7F8FA',
     borderRadius: 12,
     padding: 16,

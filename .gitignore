@@ -35,3 +35,33 @@ yarn-error.*
 
 # typescript
 *.tsbuildinfo
+
+# ===============================
+# ADD THESE FIREBASE PROTECTIONS:
+# ===============================
+
+# Environment variables (ALL TYPES)
+.env
+.env.development
+.env.production
+.env.test
+functions/.env
+
+# Firebase credentials (CRITICAL!)
+functions/fitcheck-vision.json
+functions/*-service-account-*.json
+*-service-account-*.json
+fitcheck-vision.json
+
+# Firebase cache and logs
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Functions build output
+functions/lib/
+functions/dist/
+
+# Firebase rules (development)
+firestore.rules
+storage.rules

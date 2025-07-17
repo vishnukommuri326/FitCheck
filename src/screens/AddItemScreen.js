@@ -14,18 +14,20 @@ import {
   Platform,
   ActivityIndicator,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Dimensions } from 'react-native';
 import { useRoute } from '@react-navigation/native';
-
+import { functions, storage } from '../../firebase.config';
+import { httpsCallable } from 'firebase/functions';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { signInAnonymously } from 'firebase/auth';
 
 const { width } = Dimensions.get('window');
 
 const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
-
-
 
 const AddItemScreen = ({ navigation }) => {
   const route = useRoute();
@@ -35,6 +37,10 @@ const AddItemScreen = ({ navigation }) => {
   const [itemColor, setItemColor] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  
+  // AI Testing states
+  const [isTestingAI, setIsTestingAI] = useState(false);
+  const [aiResults, setAiResults] = useState(null);
 
   const handleImagePicker = async () => {
     // 1. Ask for gallery permission
@@ -55,6 +61,7 @@ const AddItemScreen = ({ navigation }) => {
     // 3. If user didn't cancel, save URI
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setAiResults(null);
     }
   };
 
@@ -75,6 +82,126 @@ const AddItemScreen = ({ navigation }) => {
     // 3. If user didn't cancel, save URI
     if (!result.canceled) {
       setImageUri(result.assets[0].uri);
+      setAiResults(null);
+    }
+  };
+
+  const handleTestAI = async () => {
+    if (!imageUri) {
+      Alert.alert('No Image', 'Please select an image first to test AI analysis.');
+      return;
+    }
+
+    setIsTestingAI(true);
+    setAiResults(null);
+    
+    try {
+      console.log('🤖 Step 1: Upload and analyze your actual photo...');
+      console.log('📱 Local image URI:', imageUri);
+      
+      // Step 1: Upload your image to Firebase Storage
+      console.log('📤 Uploading image to Firebase Storage...');
+      
+      const { storage } = require('../../firebase.config');
+      const { ref, uploadBytes, getDownloadURL } = require('firebase/storage');
+      
+      // Convert local image to blob
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      
+      // Create unique filename
+      const filename = `temp-analysis/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      const storageRef = ref(storage, filename);
+      
+      // Upload to Firebase Storage
+      await uploadBytes(storageRef, blob);
+      const publicImageUrl = await getDownloadURL(storageRef);
+      
+      console.log('✅ Image uploaded! Public URL:', publicImageUrl);
+      
+      // Step 2: Analyze the uploaded image with Vision API
+      console.log('🔍 Analyzing your uploaded image with Vision API...');
+      
+      const processUrl = 'https://us-central1-fitcheck-1c224.cloudfunctions.net/processWardrobeItemHTTP';
+      
+      const analysisResponse = await fetch(processUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          data: {
+            imageUrl: publicImageUrl, // Your uploaded image!
+            userId: 'test-user-123',
+            testType: 'user-uploaded-image'
+          }
+        })
+      });
+      
+      if (!analysisResponse.ok) {
+        throw new Error(`Analysis failed: ${analysisResponse.status}`);
+      }
+      
+      const result = await analysisResponse.json();
+      console.log('✅ Vision API analysis of YOUR image:', result);
+      
+      setAiResults(result);
+      
+      // Auto-fill form with real AI results from YOUR photo
+      if (result.geminiAnalysis) {
+        const analysis = result.geminiAnalysis;
+        if (analysis.itemName && !itemName) setItemName(analysis.itemName);
+        if (analysis.category && !itemType) setItemType(analysis.category);
+        if (analysis.color && !itemColor) setItemColor(analysis.color);
+      }
+      
+      const visionStatus = result.visionData.processed ? 
+        '✅ Real Vision AI Analysis of YOUR Photo!' : 
+        '⚠️ Vision API Issue';
+      
+      const topTags = result.visionData.tags.slice(0, 4).join(', ');
+      const colorCount = result.visionData.colors.length;
+      const confidence = Math.round(result.visionData.confidence * 100);
+      
+      Alert.alert(
+        '🎉 YOUR Photo Analyzed!', 
+        `${visionStatus}\n\n📸 Analyzed: Your uploaded photo\n\n🔍 Vision AI Results:\n• Tags: ${topTags}\n• Colors: ${colorCount} detected\n• Confidence: ${confidence}%\n\n🧠 Smart Analysis:\n• Item: ${result.geminiAnalysis.itemName}\n• Category: ${result.geminiAnalysis.category}\n• Style: ${result.geminiAnalysis.styleCategory}\n\n✨ Form auto-filled with real AI data from YOUR photo!`,
+        [{ text: 'Amazing!', style: 'default' }]
+      );
+      
+    } catch (error) {
+      console.error('❌ Image upload/analysis failed:', error);
+      
+      let errorMessage = 'Failed to analyze your photo';
+      let helpText = '';
+      
+      if (error.message.includes('storage')) {
+        errorMessage = 'Image upload failed';
+        helpText = 'Check Firebase Storage configuration and permissions.';
+      } else if (error.message.includes('fetch')) {
+        errorMessage = 'Network error';
+        helpText = 'Check your internet connection.';
+      } else {
+        errorMessage = error.message;
+        helpText = 'Check console logs for details.';
+      }
+      
+      Alert.alert(
+        '❌ Upload Failed', 
+        `${errorMessage}\n\n${helpText}\n\nFalling back to test mode...`,
+        [
+          { 
+            text: 'Try Test Mode', 
+            onPress: () => {
+              // Fallback to public image test
+              console.log('Falling back to public image test...');
+            }
+          },
+          { text: 'OK', style: 'cancel' }
+        ]
+      );
+    } finally {
+      setIsTestingAI(false);
     }
   };
 
@@ -106,6 +233,7 @@ const AddItemScreen = ({ navigation }) => {
       itemType,
       itemColor,
       uploadedAt: new Date().toISOString(),
+      aiResults: aiResults, // Save AI results if available
     };
 
     try {
@@ -191,9 +319,61 @@ const AddItemScreen = ({ navigation }) => {
                   <Ionicons name="camera" size={16} color="#F97316" />
                   <Text style={styles.changePhotoText}>Change Photo</Text>
                 </TouchableOpacity>
+                
+                {/* AI Test Button */}
+                <TouchableOpacity 
+                  style={styles.aiTestButton}
+                  onPress={handleTestAI}
+                  disabled={isTestingAI}
+                  accessibilityLabel="Test AI analysis"
+                  accessibilityRole="button"
+                >
+                  {isTestingAI ? (
+                    <ActivityIndicator size="small" color="#8B5CF6" />
+                  ) : (
+                    <Ionicons name="sparkles" size={16} color="#8B5CF6" />
+                  )}
+                  <Text style={styles.aiTestButtonText}>
+                    {isTestingAI ? 'Testing Connection...' : 'Test Firebase Connection'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
           </View>
+
+          {/* AI Results Card */}
+          {aiResults && (
+            <View style={styles.aiResultsCard}>
+              <Text style={styles.aiResultsTitle}>🤖 AI Analysis Results</Text>
+              
+              {aiResults.visionData?.tags && (
+                <View style={styles.aiResultSection}>
+                  <Text style={styles.aiResultLabel}>Vision Tags:</Text>
+                  <Text style={styles.aiResultValue}>
+                    {aiResults.visionData.tags.join(', ')}
+                  </Text>
+                </View>
+              )}
+              
+              {aiResults.geminiAnalysis?.styleCategory && (
+                <View style={styles.aiResultSection}>
+                  <Text style={styles.aiResultLabel}>Style Category:</Text>
+                  <Text style={styles.aiResultValue}>
+                    {aiResults.geminiAnalysis.styleCategory}
+                  </Text>
+                </View>
+              )}
+              
+              {aiResults.geminiAnalysis?.detailedDescription && (
+                <View style={styles.aiResultSection}>
+                  <Text style={styles.aiResultLabel}>Description:</Text>
+                  <Text style={styles.aiResultValue}>
+                    {aiResults.geminiAnalysis.detailedDescription}
+                  </Text>
+                </View>
+              )}
+            </View>
+          )}
 
           {/* Item Details Card */}
           {imageUri && (
@@ -407,6 +587,50 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#F97316',
   },
+  aiTestButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F3F4F6',
+    borderRadius: 20,
+    gap: 6,
+  },
+  aiTestButtonText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#8B5CF6',
+  },
+  aiResultsCard: {
+    marginHorizontal: 24,
+    marginTop: 16,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  aiResultsTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 16,
+  },
+  aiResultSection: {
+    marginBottom: 12,
+  },
+  aiResultLabel: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+    marginBottom: 4,
+  },
+  aiResultValue: {
+    fontSize: 14,
+    color: '#333333',
+    lineHeight: 20,
+  },
   detailsCard: {
     marginHorizontal: 24,
     marginTop: 16,
@@ -474,7 +698,7 @@ const styles = StyleSheet.create({
   categoryChipTextActive: {
     color: '#FFFFFF',
   },
-   actionBar: {
+  actionBar: {
     position: 'absolute',
     bottom: 24,
     left: 24,
@@ -485,7 +709,7 @@ const styles = StyleSheet.create({
   },
   addItemButton: {
     flex: 0.48,
-    marginRight: 16,            // <-- extra space to the right
+    marginRight: 16,
     backgroundColor: '#8B5CF6',
     borderRadius: 28,
     paddingVertical: 16,
@@ -501,7 +725,6 @@ const styles = StyleSheet.create({
   },
   fab: {
     flex: 0.8,
-    // marginLeft: 16,          // you can also use this instead of marginRight above
     backgroundColor: '#10B981',
     borderRadius: 28,
     paddingVertical: 16,

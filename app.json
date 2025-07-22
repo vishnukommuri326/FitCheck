@@ -1,11 +1,13 @@
 {
   "expo": {
+    "owner": "vk326",
     "name": "FitCheck",
     "slug": "FitCheck",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
+    "scheme": "fitcheck",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -13,13 +15,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.fitcheck.app",
       "supportsTablet": true,
-      "statusBar": {
-        "hidden": true
-      },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription":
-          "FitCheck uses your location to tailor outfit suggestions by weather"
+        "NSLocationWhenInUseUsageDescription": "FitCheck uses your location to tailor outfit suggestions by weather",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -27,14 +27,27 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "statusBar": {
-        "hidden": true
-      },
+      "package": "com.fitcheck.app",
       "edgeToEdgeEnabled": true,
-      "permissions": ["ACCESS_FINE_LOCATION"]
+      "permissions": [
+        "ACCESS_FINE_LOCATION"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "c796682d-d07a-4479-9dd8-538f695707ab"
+      }
+    },
+    "plugins": [
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.768571758877-d36760meuro60sinvvdqdmtc473ms9dl"
+        }
+      ]
+    ]
   }
 }

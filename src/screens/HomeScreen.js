@@ -12,8 +12,10 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from '../styles/HomeScreenStyles';
+import { useAuth } from '../context/AuthContext';
 
 const HomeScreen = ({ navigation }) => {
+  const { logout } = useAuth();
   const [profileImage, setProfileImage] = useState(null);
 
   useEffect(() => {
@@ -123,9 +125,8 @@ const HomeScreen = ({ navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.logoutButton}
-              onPress={() => {
-                // Add logout logic here
-                navigation.navigate('Login');
+              onPress={async () => {
+                await logout();
               }}
             >
               <Ionicons name="log-out-outline" size={24} color="#333333" />

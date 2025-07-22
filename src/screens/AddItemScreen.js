@@ -1,7 +1,7 @@
-import 'react-native-get-random-values';
+
 import React, { useState } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { v4 as uuidv4 } from 'uuid';
+
+
 import {
   View,
   Text,
@@ -20,17 +20,22 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { Dimensions } from 'react-native';
 import { useRoute } from '@react-navigation/native';
+import { v4 as uuidv4 } from 'uuid';
 import { functions, storage } from '../../firebase.config';
-import { httpsCallable } from 'firebase/functions';
+
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { signInAnonymously } from 'firebase/auth';
+
 
 const { width } = Dimensions.get('window');
 
 const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
 
+import { useAuth } from '../context/AuthContext';
+import { addGarment } from '../services/firebase';
+
 const AddItemScreen = ({ navigation }) => {
   const route = useRoute();
+  const { user } = useAuth();
   const [imageUri, setImageUri] = useState(route.params?.imageUri || null);
   const [itemName, setItemName] = useState('');
   const [itemType, setItemType] = useState('');
@@ -130,7 +135,7 @@ const AddItemScreen = ({ navigation }) => {
         body: JSON.stringify({
           data: {
             imageUrl: publicImageUrl,
-            userId: 'test-user-123'
+            userId: user.uid
           }
         })
       });
@@ -210,30 +215,33 @@ const AddItemScreen = ({ navigation }) => {
     }
     setIsSaving(true);
 
-    const newItem = {
-      id: uuidv4(),
-      imageUri,
-      itemName,
-      itemType,
-      itemColor,
-      uploadedAt: new Date().toISOString(),
-      aiResults: aiResults, // Save AI results if available
-    };
-
     try {
-      const existingItems = await AsyncStorage.getItem('wardrobeItems');
-      const items = existingItems ? JSON.parse(existingItems) : [];
-      items.push(newItem);
-      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(items));
-      console.log('Item saved to AsyncStorage:', newItem);
-      navigation.navigate('Wardrobe', { newItemAdded: true, newItem });
+      // 1. Upload image to Firebase Storage
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const filename = `wardrobe/${user.uid}/${Date.now()}-${uuidv4()}.jpg`;
+      const storageRef = ref(storage, filename);
+      await uploadBytes(storageRef, blob);
+      const downloadURL = await getDownloadURL(storageRef);
+      console.log('Image uploaded to Firebase Storage. Download URL:', downloadURL);
+
+      // 2. Save item to Firestore
+      await addGarment(user.uid, downloadURL, {
+        name: itemName,
+        type: itemType,
+        color: itemColor,
+        aiResults: aiResults, // Save AI results if available
+      });
+
+      navigation.navigate('Wardrobe', { newItemAdded: true });
     } catch (error) {
-      console.error('Error saving item to AsyncStorage:', error);
+      console.error('Error adding item:', error);
       alert('Failed to save item. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
+
 
   return (
     <SafeAreaView style={styles.container}>

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -105,16 +105,16 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMo
           activeOpacity={0.8}
           onPress={() => onPress(item, selectMode)}
         >
-          <Image source={{ uri: item.imageUri }} style={styles.itemImage} />
+          <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
           <TouchableOpacity style={styles.favoriteButton} onPress={() => onToggleFavorite(item.id)} testID={`favorite-button-${item.id}`}>
             <Ionicons name={item.isFavorite ? "heart" : "heart-outline"} size={20} color="#FFFFFF" testID={`favorite-icon-${item.id}`} />
           </TouchableOpacity>
           <View style={styles.itemInfo}>
-            <Text style={styles.itemName} numberOfLines={1}>{item.itemName || ''}</Text>
-            <Text style={styles.itemDetails}>{item.itemType}</Text>
+            <Text style={styles.itemName} numberOfLines={1}>{item.tags.name || ''}</Text>
+            <Text style={styles.itemDetails}>{item.tags.type}</Text>
             <View style={styles.colorRow}>
-              <View style={[styles.colorDot, { backgroundColor: (item.itemColor || '#000000').toLowerCase() }]} />
-              <Text style={styles.colorText}>{item.itemColor || ''}</Text>
+              <View style={[styles.colorDot, { backgroundColor: (item.tags.color || '#000000').toLowerCase() }]} />
+              <Text style={styles.colorText}>{item.tags.color || ''}</Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -123,7 +123,11 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMo
   );
 };
 
+import { useAuth } from '../context/AuthContext';
+import { getWardrobe, deleteGarment, updateGarment } from '../services/firebase';
+
 const WardrobeScreen = ({ navigation, route }) => {
+  const { user } = useAuth();
   const { selectMode, selectedDayIndex } = route.params || {};
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
@@ -145,31 +149,23 @@ const WardrobeScreen = ({ navigation, route }) => {
 
   const loadWardrobeItems = useCallback(async () => {
     try {
-      const storedItems = await AsyncStorage.getItem('wardrobeItems');
-      if (storedItems) {
-        const parsedItems = JSON.parse(storedItems);
-        // Ensure all items have an isFavorite property
-        const itemsWithFavorites = parsedItems.map(item => ({
-          ...item,
-          isFavorite: item.isFavorite !== undefined ? item.isFavorite : false,
-        }));
-        setWardrobeItems(itemsWithFavorites);
-      }
+      const items = await getWardrobe(user.uid);
+      setWardrobeItems(items);
     } catch (error) {
       console.error('Failed to load wardrobe items:', error);
     }
-  }, []);
+  }, [user.uid]);
 
   const toggleFavorite = async (itemId) => {
     try {
-      const updatedItems = wardrobeItems.map(item =>
-        item.id === itemId ? { ...item, isFavorite: !item.isFavorite } : item
-      );
-      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(updatedItems));
-      setWardrobeItems(updatedItems);
-      // If the favorited item is currently in the modal, update its state too
-      if (selectedItem && selectedItem.id === itemId) {
-        setSelectedItem(prev => ({ ...prev, isFavorite: !prev.isFavorite }));
+      const itemToUpdate = wardrobeItems.find(item => item.id === itemId);
+      if (itemToUpdate) {
+        const updatedItem = { ...itemToUpdate, isFavorite: !itemToUpdate.isFavorite };
+        await updateGarment(user.uid, itemId, { isFavorite: updatedItem.isFavorite });
+        setWardrobeItems(wardrobeItems.map(item => item.id === itemId ? updatedItem : item));
+        if (selectedItem && selectedItem.id === itemId) {
+          setSelectedItem(updatedItem);
+        }
       }
     } catch (error) {
       console.error('Failed to toggle favorite status:', error);
@@ -180,8 +176,6 @@ const WardrobeScreen = ({ navigation, route }) => {
     useCallback(() => {
       loadWardrobeItems();
       if (route.params?.newItemAdded) {
-        // Optionally, you can do something with route.params.newItem here
-        // For now, just reloading all items is sufficient.
         navigation.setParams({ newItemAdded: false }); // Reset the param
       }
     }, [route.params?.newItemAdded, loadWardrobeItems])
@@ -210,24 +204,24 @@ const WardrobeScreen = ({ navigation, route }) => {
   }, []);
 
   const filteredItems = wardrobeItems.filter(item => {
-    const matchesSearch = (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (item.itemColor || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = (item.tags.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (item.tags.color || '').toLowerCase().includes(searchQuery.toLowerCase());
     
     if (selectedCategory === 'All') {
       return matchesSearch;
     } else if (selectedCategory === 'Favorites') {
       return item.isFavorite && matchesSearch;
     } else { // Specific category like 'Tops', 'Bottoms', etc.
-      return item.itemType === selectedCategory && matchesSearch;
+      return item.tags.type === selectedCategory && matchesSearch;
     }
   });
 
   const handleEdit = (item) => {
-    console.log('Edit item:', item.itemName);
+    console.log('Edit item:', item.tags.name);
     setSelectedItem(item);
-    setEditName(item.itemName);
-    setEditType(item.itemType);
-    setEditColor(item.itemColor);
+    setEditName(item.tags.name);
+    setEditType(item.tags.type);
+    setEditColor(item.tags.color);
     setModalVisible(false);
     setEditModalVisible(true);
   };
@@ -239,21 +233,13 @@ const WardrobeScreen = ({ navigation, route }) => {
     }
 
     try {
-      const updatedItem = {
-        ...selectedItem,
-        itemName: editName,
-        itemType: editType,
-        itemColor: editColor,
+      const updatedTags = {
+        name: editName,
+        type: editType,
+        color: editColor,
       };
-
-      const existingItems = await AsyncStorage.getItem('wardrobeItems');
-      let items = existingItems ? JSON.parse(existingItems) : [];
-      const updatedItems = items.map(item => 
-        item.id === selectedItem.id ? updatedItem : item
-      );
-      
-      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(updatedItems));
-      setWardrobeItems(updatedItems);
+      await updateGarment(user.uid, selectedItem.id, { tags: updatedTags });
+      loadWardrobeItems();
       setEditModalVisible(false);
       console.log('Item updated successfully');
     } catch (error) {
@@ -263,17 +249,14 @@ const WardrobeScreen = ({ navigation, route }) => {
   };
 
   const handleDelete = async (itemToDelete) => {
-    console.log('Delete item:', itemToDelete.itemName);
+    console.log('Delete item:', itemToDelete.tags.name);
     try {
-      const existingItems = await AsyncStorage.getItem('wardrobeItems');
-      let items = existingItems ? JSON.parse(existingItems) : [];
-      const updatedItems = items.filter(item => item.id !== itemToDelete.id);
-      await AsyncStorage.setItem('wardrobeItems', JSON.stringify(updatedItems));
-      setWardrobeItems(updatedItems);
-      console.log('Item deleted from AsyncStorage:', itemToDelete.itemName);
+      await deleteGarment(user.uid, itemToDelete.id);
+      loadWardrobeItems();
+      console.log('Item deleted from Firestore:', itemToDelete.tags.name);
       closeModal(); // Close modal if item was deleted from detail view
     } catch (error) {
-      console.error('Error deleting item from AsyncStorage:', error);
+      console.error('Error deleting item from Firestore:', error);
       alert('Failed to delete item. Please try again.');
     }
   };
@@ -498,25 +481,25 @@ const WardrobeScreen = ({ navigation, route }) => {
 
                   {/* Item Image */}
                   <Image 
-                    source={{ uri: selectedItem.imageUri }} 
+                    source={{ uri: selectedItem.imageUrl }} 
                     style={styles.modalImage}
                     resizeMode="cover"
                   />
 
                   {/* Item Info */}
                   <View style={styles.modalInfo}>
-                    <Text style={styles.modalItemName}>{selectedItem.itemName}</Text>
+                    <Text style={styles.modalItemName}>{selectedItem.tags.name}</Text>
                     
                     <View style={styles.modalDetailsRow}>
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Type</Text>
-                        <Text style={styles.modalDetailValue}>{selectedItem.itemType}</Text>
+                        <Text style={styles.modalDetailValue}>{selectedItem.tags.type}</Text>
                       </View>
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Color</Text>
                         <View style={styles.modalColorRow}>
-                          <View style={[styles.modalColorDot, { backgroundColor: (selectedItem.itemColor || '#000000').toLowerCase() }]} />
-                          <Text style={styles.modalDetailValue}>{selectedItem.itemColor || ''}</Text>
+                          <View style={[styles.modalColorDot, { backgroundColor: (selectedItem.tags.color || '#000000').toLowerCase() }]} />
+                          <Text style={styles.modalDetailValue}>{selectedItem.tags.color || ''}</Text>
                         </View>
                       </View>
                     </View>

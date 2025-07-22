@@ -41,9 +41,12 @@ const ProfileScreen = ({ navigation }) => {
     })()
   }, [])
 
-  const handleLogout = () => {
-    logout()
-    navigation.navigate('Login')
+  const handleLogout = async () => {
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Login' }],
+    });
   }
 
   const handleSetMockLocation = async () => {

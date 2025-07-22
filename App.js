@@ -1,13 +1,14 @@
+import 'react-native-get-random-values';
 import React from 'react';
-import AppNavigator from './src/navigation/AppNavigator';
 import { AuthProvider } from './src/context/AuthContext';
-import './global.css'; // Import global.css
+import AppNavigator from './src/navigation/AppNavigator';
 
-export default function App() {
+const App = () => {
   return (
     <AuthProvider>
       <AppNavigator />
     </AuthProvider>
   );
-}
-// PR Test: Small change for validation
+};
+
+export default App;

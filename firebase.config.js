@@ -1,6 +1,6 @@
 // firebase.config.js
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
@@ -24,14 +24,5 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const functions = getFunctions(app);
-
-// Auto sign-in anonymously for testing
-signInAnonymously(auth)
-  .then(() => {
-    console.log('✅ Signed in anonymously');
-  })
-  .catch((error) => {
-    console.log('⚠️ Anonymous sign-in failed:', error.message);
-  });
 
 export default app;

@@ -23,7 +23,7 @@ const LoginScreen = ({ navigation }) => {
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
 
-  const { login } = useAuth();
+  const { login, googleSignIn } = useAuth();
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -38,13 +38,14 @@ const LoginScreen = ({ navigation }) => {
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      await login(email, password);
+      // The onAuthStateChanged in AuthContext will handle navigation
+    } catch (error) {
+      Alert.alert('Login Failed', error.message);
+    } finally {
       setIsLoading(false);
-      login(email, password);
-      navigation.navigate('Home');
-    }, 1500);
+    }
   };
 
   return (
@@ -165,7 +166,7 @@ const LoginScreen = ({ navigation }) => {
 
             {/* Social Login */}
             <View style={styles.socialContainer}>
-              <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.socialButton} activeOpacity={0.7} onPress={googleSignIn}>
                 <Ionicons name="logo-google" size={20} color="#333333" />
                 <Text style={styles.socialButtonText}>Continue with Google</Text>
               </TouchableOpacity>

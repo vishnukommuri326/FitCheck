@@ -13,6 +13,8 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import styles from '../styles/SignUpScreenStyles';
+import { useAuth } from '../context/AuthContext';
+import { addUser } from '../services/firebase';
 
 const SignUpScreen = ({ navigation }) => {
   const [name, setName] = useState('');
@@ -27,6 +29,7 @@ const SignUpScreen = ({ navigation }) => {
   const [passwordFocused, setPasswordFocused] = useState(false);
   const [confirmPasswordFocused, setConfirmPasswordFocused] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const { signUp, googleSignIn } = useAuth();
 
   const handleSignUp = async () => {
     if (!name || !email || !password || !confirmPassword) {
@@ -56,17 +59,15 @@ const SignUpScreen = ({ navigation }) => {
     }
 
     setIsLoading(true);
-    
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const userCredential = await signUp(email, password);
+      await addUser(userCredential.user, name);
+      // The onAuthStateChanged in AuthContext will handle navigation
+    } catch (error) {
+      Alert.alert('Sign Up Failed', error.message);
+    } finally {
       setIsLoading(false);
-      console.log('Sign Up attempt with:', email);
-      Alert.alert(
-        'Welcome to StyleMate!', 
-        'Your account has been created successfully.',
-        [{ text: 'OK', onPress: () => navigation.navigate('Home') }]
-      );
-    }, 1500);
+    }
   };
 
   return (
@@ -268,7 +269,7 @@ const SignUpScreen = ({ navigation }) => {
 
             {/* Social Sign Up */}
             <View style={styles.socialContainer}>
-              <TouchableOpacity style={styles.socialButton} activeOpacity={0.7}>
+              <TouchableOpacity style={styles.socialButton} activeOpacity={0.7} onPress={googleSignIn}>
                 <Ionicons name="logo-google" size={20} color="#333333" />
                 <Text style={styles.socialButtonText}>Continue with Google</Text>
               </TouchableOpacity>

@@ -96,14 +96,11 @@ const AddItemScreen = ({ navigation }) => {
     setAiResults(null);
     
     try {
-      console.log('🤖 Step 1: Upload and analyze your actual photo...');
+      console.log('🤖 Starting Gemini AI analysis...');
       console.log('📱 Local image URI:', imageUri);
       
       // Step 1: Upload your image to Firebase Storage
       console.log('📤 Uploading image to Firebase Storage...');
-      
-      const { storage } = require('../../firebase.config');
-      const { ref, uploadBytes, getDownloadURL } = require('firebase/storage');
       
       // Convert local image to blob
       const response = await fetch(imageUri);
@@ -119,86 +116,73 @@ const AddItemScreen = ({ navigation }) => {
       
       console.log('✅ Image uploaded! Public URL:', publicImageUrl);
       
-      // Step 2: Analyze the uploaded image with Vision API
-      console.log('🔍 Analyzing your uploaded image with Vision API...');
+      // Step 2: Analyze with Gemini Vision API
+      console.log('🔍 Analyzing with Gemini AI...');
       
-      const processUrl = 'https://us-central1-fitcheck-1c224.cloudfunctions.net/processWardrobeItemHTTP';
+      // Use the Gemini endpoint
+      const geminiUrl = 'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeClothingItem';
       
-      const analysisResponse = await fetch(processUrl, {
+      const analysisResponse = await fetch(geminiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           data: {
-            imageUrl: publicImageUrl, // Your uploaded image!
-            userId: 'test-user-123',
-            testType: 'user-uploaded-image'
+            imageUrl: publicImageUrl,
+            userId: 'test-user-123'
           }
         })
       });
       
       if (!analysisResponse.ok) {
+        const errorText = await analysisResponse.text();
+        console.error('Analysis response error:', errorText);
         throw new Error(`Analysis failed: ${analysisResponse.status}`);
       }
       
       const result = await analysisResponse.json();
-      console.log('✅ Vision API analysis of YOUR image:', result);
+      console.log('✅ Gemini AI analysis complete:', result);
       
       setAiResults(result);
       
-      // Auto-fill form with real AI results from YOUR photo
-      if (result.geminiAnalysis) {
-        const analysis = result.geminiAnalysis;
+      // Auto-fill form with Gemini results
+      if (result.analysis) {
+        const analysis = result.analysis;
         if (analysis.itemName && !itemName) setItemName(analysis.itemName);
         if (analysis.category && !itemType) setItemType(analysis.category);
-        if (analysis.color && !itemColor) setItemColor(analysis.color);
+        if (analysis.color?.primary && !itemColor) setItemColor(analysis.color.primary);
       }
       
-      const visionStatus = result.visionData.processed ? 
-        '✅ Real Vision AI Analysis of YOUR Photo!' : 
-        '⚠️ Vision API Issue';
-      
-      const topTags = result.visionData.tags.slice(0, 4).join(', ');
-      const colorCount = result.visionData.colors.length;
-      const confidence = Math.round(result.visionData.confidence * 100);
+      // Create detailed alert message
+      const analysis = result.analysis;
+      let alertMessage = `✨ Item: ${analysis.itemName}\n`;
+      alertMessage += `🎨 Color: ${analysis.color.primary}`;
+      if (analysis.color.secondary) {
+        alertMessage += ` & ${analysis.color.secondary}`;
+      }
+      alertMessage += `\n👔 Type: ${analysis.type}\n`;
+      alertMessage += `💫 Style: ${analysis.style}\n`;
+      alertMessage += `🧵 Material: ${analysis.material}\n`;
+      alertMessage += `☀️ Season: ${analysis.season}\n`;
+      alertMessage += `\n📊 Confidence: ${Math.round(analysis.confidence.overall * 100)}%`;
+      if (analysis.confidence.notes) {
+        alertMessage += `\n📝 ${analysis.confidence.notes}`;
+      }
       
       Alert.alert(
-        '🎉 YOUR Photo Analyzed!', 
-        `${visionStatus}\n\n📸 Analyzed: Your uploaded photo\n\n🔍 Vision AI Results:\n• Tags: ${topTags}\n• Colors: ${colorCount} detected\n• Confidence: ${confidence}%\n\n🧠 Smart Analysis:\n• Item: ${result.geminiAnalysis.itemName}\n• Category: ${result.geminiAnalysis.category}\n• Style: ${result.geminiAnalysis.styleCategory}\n\n✨ Form auto-filled with real AI data from YOUR photo!`,
-        [{ text: 'Amazing!', style: 'default' }]
+        '🎉 Gemini AI Analysis Complete!', 
+        alertMessage,
+        [{ text: 'Awesome!', style: 'default' }]
       );
       
     } catch (error) {
-      console.error('❌ Image upload/analysis failed:', error);
-      
-      let errorMessage = 'Failed to analyze your photo';
-      let helpText = '';
-      
-      if (error.message.includes('storage')) {
-        errorMessage = 'Image upload failed';
-        helpText = 'Check Firebase Storage configuration and permissions.';
-      } else if (error.message.includes('fetch')) {
-        errorMessage = 'Network error';
-        helpText = 'Check your internet connection.';
-      } else {
-        errorMessage = error.message;
-        helpText = 'Check console logs for details.';
-      }
+      console.error('❌ Gemini analysis failed:', error);
       
       Alert.alert(
-        '❌ Upload Failed', 
-        `${errorMessage}\n\n${helpText}\n\nFalling back to test mode...`,
-        [
-          { 
-            text: 'Try Test Mode', 
-            onPress: () => {
-              // Fallback to public image test
-              console.log('Falling back to public image test...');
-            }
-          },
-          { text: 'OK', style: 'cancel' }
-        ]
+        '❌ Analysis Failed', 
+        `${error.message}\n\nMake sure:\n1. Gemini API key is set\n2. Function is deployed\n3. Internet connection is stable`,
+        [{ text: 'OK', style: 'cancel' }]
       );
     } finally {
       setIsTestingAI(false);
@@ -334,41 +318,45 @@ const AddItemScreen = ({ navigation }) => {
                     <Ionicons name="sparkles" size={16} color="#8B5CF6" />
                   )}
                   <Text style={styles.aiTestButtonText}>
-                    {isTestingAI ? 'Testing Connection...' : 'Test Firebase Connection'}
+                    {isTestingAI ? 'Analyzing with Gemini...' : 'Analyze with AI'}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* AI Results Card */}
-          {aiResults && (
+          {/* AI Results Card - Updated for Gemini */}
+          {aiResults && aiResults.analysis && (
             <View style={styles.aiResultsCard}>
-              <Text style={styles.aiResultsTitle}>🤖 AI Analysis Results</Text>
+              <Text style={styles.aiResultsTitle}>✨ Gemini AI Analysis</Text>
               
-              {aiResults.visionData?.tags && (
-                <View style={styles.aiResultSection}>
-                  <Text style={styles.aiResultLabel}>Vision Tags:</Text>
-                  <Text style={styles.aiResultValue}>
-                    {aiResults.visionData.tags.join(', ')}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.aiResultSection}>
+                <Text style={styles.aiResultLabel}>Detected Item:</Text>
+                <Text style={styles.aiResultValue}>
+                  {aiResults.analysis.itemName}
+                </Text>
+              </View>
               
-              {aiResults.geminiAnalysis?.styleCategory && (
-                <View style={styles.aiResultSection}>
-                  <Text style={styles.aiResultLabel}>Style Category:</Text>
-                  <Text style={styles.aiResultValue}>
-                    {aiResults.geminiAnalysis.styleCategory}
-                  </Text>
-                </View>
-              )}
+              <View style={styles.aiResultSection}>
+                <Text style={styles.aiResultLabel}>Colors:</Text>
+                <Text style={styles.aiResultValue}>
+                  {aiResults.analysis.color.primary}
+                  {aiResults.analysis.color.secondary && ` & ${aiResults.analysis.color.secondary}`}
+                </Text>
+              </View>
               
-              {aiResults.geminiAnalysis?.detailedDescription && (
+              <View style={styles.aiResultSection}>
+                <Text style={styles.aiResultLabel}>Style & Material:</Text>
+                <Text style={styles.aiResultValue}>
+                  {aiResults.analysis.style} • {aiResults.analysis.material}
+                </Text>
+              </View>
+              
+              {aiResults.analysis.confidence.notes && (
                 <View style={styles.aiResultSection}>
-                  <Text style={styles.aiResultLabel}>Description:</Text>
+                  <Text style={styles.aiResultLabel}>Notes:</Text>
                   <Text style={styles.aiResultValue}>
-                    {aiResults.geminiAnalysis.detailedDescription}
+                    {aiResults.analysis.confidence.notes}
                   </Text>
                 </View>
               )}

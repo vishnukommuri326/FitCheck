@@ -2,13 +2,13 @@
 
 // Import all function modules
 const testFunctions = require('./src/test-functions');
-const visionFunctions = require('./src/vision-functions');
+const geminiFunctions = require('./src/gemini-vision');
 
 // Export all functions for deployment
 module.exports = {
   // Test functions
   ...testFunctions,
   
-  // Vision AI functions
-  ...visionFunctions
+  // Gemini Vision functions
+  ...geminiFunctions
 };

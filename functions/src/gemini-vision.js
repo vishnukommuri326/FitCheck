@@ -7,6 +7,138 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 }
 
+// Enhanced embedding generation function
+const generateEmbedding = (analysis) => {
+  const embedding = [];
+  
+  // === COLOR ENCODING (0-12) ===
+  // More comprehensive color mapping with better RGB values
+  const colorMap = {
+    // Primary colors
+    'red': [1, 0, 0], 'blue': [0, 0, 1], 'green': [0, 1, 0],
+    // Neutrals
+    'black': [0, 0, 0], 'white': [1, 1, 1], 'gray': [0.5, 0.5, 0.5], 'grey': [0.5, 0.5, 0.5],
+    // Blues
+    'navy': [0, 0, 0.5], 'royal': [0, 0, 0.8], 'teal': [0, 0.5, 0.5], 'turquoise': [0, 0.8, 0.8],
+    // Reds
+    'burgundy': [0.5, 0, 0.1], 'maroon': [0.5, 0, 0], 'crimson': [0.9, 0.1, 0.2], 'pink': [1, 0.7, 0.8],
+    // Greens
+    'forest': [0, 0.5, 0], 'olive': [0.5, 0.5, 0], 'lime': [0.5, 1, 0], 'mint': [0.6, 1, 0.6],
+    // Earth tones
+    'brown': [0.6, 0.3, 0.1], 'tan': [0.8, 0.7, 0.5], 'beige': [0.9, 0.9, 0.7], 'cream': [1, 0.9, 0.8],
+    // Jewel tones
+    'purple': [0.5, 0, 0.5], 'violet': [0.9, 0.5, 0.9], 'indigo': [0.3, 0, 0.5],
+    // Bright colors
+    'yellow': [1, 1, 0], 'orange': [1, 0.5, 0], 'coral': [1, 0.5, 0.3], 'magenta': [1, 0, 1],
+    // Metallics
+    'gold': [1, 0.8, 0], 'silver': [0.7, 0.7, 0.7], 'bronze': [0.8, 0.5, 0.2]
+  };
+  
+  // Smart color matching - check if color name contains any known colors
+  const primaryColor = analysis.color.primary.toLowerCase();
+  let matchedColor = 'gray'; // default
+  let maxMatch = 0;
+  
+  Object.keys(colorMap).forEach(color => {
+    if (primaryColor.includes(color) && color.length > maxMatch) {
+      matchedColor = color;
+      maxMatch = color.length;
+    }
+  });
+  
+  embedding.push(...colorMap[matchedColor]);
+  
+  // Secondary color (if exists)
+  if (analysis.color.secondary) {
+    const secondaryColor = analysis.color.secondary.toLowerCase();
+    let secondaryMatch = 'gray';
+    let secondaryMaxMatch = 0;
+    
+    Object.keys(colorMap).forEach(color => {
+      if (secondaryColor.includes(color) && color.length > secondaryMaxMatch) {
+        secondaryMatch = color;
+        secondaryMaxMatch = color.length;
+      }
+    });
+    
+    embedding.push(...colorMap[secondaryMatch]);
+  } else {
+    embedding.push(0, 0, 0); // No secondary color
+  }
+  
+  // === CATEGORY ENCODING (6-11) ===
+  const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories'];
+  const categoryVector = categories.map(cat => cat === analysis.category ? 1 : 0);
+  embedding.push(...categoryVector);
+  
+  // === STYLE ENCODING (12-16) ===
+  const styles = ['casual', 'formal', 'athletic', 'business', 'evening'];
+  const styleVector = styles.map(style => style === analysis.style ? 1 : 0);
+  embedding.push(...styleVector);
+  
+  // === SEASON ENCODING (17-21) ===
+  const seasons = ['summer', 'winter', 'fall', 'spring', 'all-season'];
+  const seasonVector = seasons.map(season => season === analysis.season ? 1 : 0);
+  embedding.push(...seasonVector);
+  
+  // === MATERIAL ENCODING (22-28) ===
+  const materials = ['cotton', 'denim', 'leather', 'polyester', 'silk', 'wool', 'unknown'];
+  const materialVector = materials.map(material => material === analysis.material ? 1 : 0);
+  embedding.push(...materialVector);
+  
+  // === PATTERN ENCODING (29-33) ===
+  const patterns = ['solid', 'striped', 'floral', 'plaid', 'other'];
+  const pattern = analysis.color.pattern || 'solid';
+  // Handle 'other pattern' case
+  const normalizedPattern = patterns.includes(pattern) ? pattern : 'other';
+  const patternVector = patterns.map(p => p === normalizedPattern ? 1 : 0);
+  embedding.push(...patternVector);
+  
+  // === OCCASION ENCODING (34-39) ===
+  const occasions = ['work', 'casual', 'party', 'exercise', 'formal', 'everyday'];
+  const occasionVector = occasions.map(occ => occ === analysis.occasion ? 1 : 0);
+  embedding.push(...occasionVector);
+  
+  // === COMPUTED FEATURES (40-44) ===
+  
+  // Formality score (0-1)
+  const formalityScore = analysis.style === 'formal' ? 1 : 
+                        analysis.style === 'business' ? 0.8 : 
+                        analysis.style === 'evening' ? 0.9 :
+                        analysis.style === 'casual' ? 0.2 : 
+                        analysis.style === 'athletic' ? 0.1 : 0.5;
+  embedding.push(formalityScore);
+  
+  // Versatility score (how many occasions/seasons it works for)
+  let versatilityScore = 0;
+  if (analysis.season === 'all-season') versatilityScore += 0.4;
+  if (analysis.occasion === 'everyday') versatilityScore += 0.3;
+  if (analysis.occasion === 'casual') versatilityScore += 0.2;
+  if (analysis.style === 'casual') versatilityScore += 0.1;
+  versatilityScore = Math.min(versatilityScore, 1); // Cap at 1
+  embedding.push(versatilityScore);
+  
+  // Color brightness (0-1) - based on RGB values
+  const colorRGB = colorMap[matchedColor];
+  const brightness = (colorRGB[0] + colorRGB[1] + colorRGB[2]) / 3;
+  embedding.push(brightness);
+  
+  // Pattern complexity (0-1)
+  const patternComplexity = pattern === 'solid' ? 0 :
+                           pattern === 'striped' ? 0.3 :
+                           pattern === 'plaid' ? 0.7 :
+                           pattern === 'floral' ? 0.9 : 0.5;
+  embedding.push(patternComplexity);
+  
+  // Confidence score
+  embedding.push(analysis.confidence.overall || 0.5);
+  
+  console.log(`🧮 Generated embedding vector (${embedding.length} dimensions):`, 
+    embedding.map(v => Math.round(v * 100) / 100));
+  
+  return embedding;
+};
+
 // Gemini-based clothing analysis function
 exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
   // CORS headers
@@ -78,7 +210,7 @@ Respond with ONLY a JSON object in this exact format:
   },
   "type": "Specific item type (e.g., 'T-Shirt', 'Jeans', 'Sneakers')",
   "style": "casual/formal/athletic/business/evening",
-  "material": "cotton/denim/leather/polyester/silk/unknown",
+  "material": "cotton/denim/leather/polyester/silk/wool/unknown",
   "season": "summer/winter/fall/spring/all-season",
   "occasion": "work/casual/party/exercise/formal/everyday",
   "confidence": {
@@ -139,20 +271,32 @@ Respond with ONLY a JSON object in this exact format:
       };
     }
     
+    // Generate embedding from analysis
+    console.log('🧮 Generating embedding vector...');
+    const embedding = generateEmbedding(analysis);
+    
     // Build the response
     const finalResponse = {
       success: true,
       source: 'gemini-vision',
       analysis: analysis,
+      embedding: embedding, // ✨ NEW: Include embedding vector
       metadata: {
         processedAt: new Date().toISOString(),
         userId: userId || 'anonymous',
         imageUrl: imageUrl,
-        model: 'gemini-2.0-flash-exp'
+        model: 'gemini-2.0-flash-exp',
+        embeddingVersion: 'v1', // Track embedding version for future updates
+        embeddingDimensions: embedding.length
       }
     };
     
-    console.log('✅ Sending response:', JSON.stringify(finalResponse, null, 2));
+    console.log('✅ Sending response with embedding:', {
+      analysis: analysis.itemName,
+      embeddingLength: embedding.length,
+      embeddingPreview: embedding.slice(0, 10).map(v => Math.round(v * 100) / 100)
+    });
+    
     res.json(finalResponse);
     
   } catch (error) {

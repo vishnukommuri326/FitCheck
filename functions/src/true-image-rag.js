@@ -1,4 +1,4 @@
-// functions/src/true-image-rag.js
+// functions/src/true-image-rag.js - Updated with compatibility integration
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const OpenAI = require("openai");
@@ -28,21 +28,47 @@ const cosineSimilarity = (a, b) => {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
-// Generate true image embedding using OpenAI CLIP
+// Generate image embedding by first describing the image
 const generateImageEmbedding = async (imageUrl, openai) => {
   try {
-    console.log('🖼️ Generating image embedding with CLIP...');
+    console.log('🖼️ Generating image embedding via description...');
     
-    const response = await openai.embeddings.create({
-      model: "text-embedding-3-large", // Best model for multimodal
-      input: imageUrl,
+    // Step 1: Use GPT-4o to describe the image
+    const descriptionResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Describe this clothing item in detail for fashion similarity analysis. Include: exact colors, materials, style, fit, patterns, and distinctive visual features."
+          },
+          {
+            type: "image_url",
+            image_url: { url: imageUrl }
+          }
+        ]
+      }],
+      max_tokens: 150
+    });
+    
+    const imageDescription = descriptionResponse.choices[0].message.content;
+    console.log('📝 Generated image description:', imageDescription);
+    
+    // Step 2: Create embedding from the description
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-large",
+      input: imageDescription,
       encoding_format: "float"
     });
     
-    const imageEmbedding = response.data[0].embedding;
+    const imageEmbedding = embeddingResponse.data[0].embedding;
     console.log(`✅ Generated image embedding: ${imageEmbedding.length} dimensions`);
     
-    return imageEmbedding;
+    return {
+      embedding: imageEmbedding,
+      description: imageDescription
+    };
     
   } catch (error) {
     console.error('❌ Failed to generate image embedding:', error);
@@ -101,7 +127,7 @@ const createHybridEmbedding = (imageEmbedding, textEmbedding, attributeEmbedding
   return hybridEmbedding;
 };
 
-// Main function: Analyze with True Image RAG
+// ✅ UPDATED: Main function now uses compatibility results
 exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -113,11 +139,17 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
   }
   
   try {
-    const { imageUrl, userId, itemAnalysis } = req.body.data || req.body;
+    const { 
+      imageUrl, 
+      userId, 
+      itemAnalysis, 
+      compatibleItems // ✅ NEW: Accept compatibility results
+    } = req.body.data || req.body;
     
     console.log('🚀 Starting True Image RAG analysis...');
     console.log('📸 Image URL:', imageUrl);
     console.log('👤 User ID:', userId);
+    console.log('🎯 Compatible items received:', compatibleItems?.length || 0);
     
     if (!imageUrl || !userId) {
       res.status(400).json({ error: 'imageUrl and userId are required' });
@@ -133,47 +165,114 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
       throw new Error('OpenAI API key not found');
     }
     
-    // Step 1: Generate pure image embedding
-    console.log('🔍 Step 1: Generating image embedding...');
-    const imageEmbedding = await generateImageEmbedding(imageUrl, openai);
-    
-    // Step 2: Create rich text description using GPT-4 Vision
-    console.log('📝 Step 2: Generating detailed description...');
-    const descriptionResponse = await openai.chat.completions.create({
-      model: "gpt-4-vision-preview",
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Describe this clothing item in detail for fashion search. Include: style, colors, materials, patterns, fit, occasion suitability, and any distinctive features. Be specific and use fashion terminology."
-          },
-          {
-            type: "image_url",
-            image_url: { url: imageUrl }
+    // ✅ NEW: Check if we have compatibility results to use
+    if (compatibleItems && compatibleItems.length > 0) {
+      console.log('🔍 Using provided compatibility results...');
+      
+      // Generate description for styling context
+      const descriptionResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: "Describe this clothing item in detail for fashion styling. Include: style, colors, materials, patterns, fit, occasion suitability, and any distinctive features. Be specific and use fashion terminology."
+            },
+            {
+              type: "image_url",
+              image_url: { url: imageUrl }
+            }
+          ]
+        }],
+        max_tokens: 200
+      });
+      
+      const itemDescription = descriptionResponse.choices[0].message.content;
+      console.log('📋 Generated description:', itemDescription);
+      
+      // Use provided compatible items
+      const topItems = compatibleItems.slice(0, 8);
+      
+      // Build context for styling advice using EXACT items from compatibility check
+      const wardrobeContext = topItems.map(item => {
+        const name = item.tags?.name || 'Item';
+        const analysis = item.tags?.aiResults?.analysis;
+        const similarity = item.similarity ? `${Math.round(item.similarity * 100)}% match` : 'Compatible';
+        return `- ${name} (${similarity}${analysis ? `, ${analysis.style} style, ${analysis.color?.primary}` : ''})`;
+      }).join('\n');
+      
+      const stylingPrompt = `You are a professional fashion stylist. A user is considering a new clothing item described as: "${itemDescription}"
+
+Based on their wardrobe compatibility analysis, here are the items this works well with:
+${wardrobeContext}
+
+Create personalized styling advice that:
+1. Suggests 2-3 specific outfit combinations using their existing pieces
+2. Explains why these combinations work (colors, styles, occasions)
+3. Recommends specific occasions for each outfit
+4. Keep it friendly, encouraging, and actionable
+5. Reference the specific item names from their wardrobe
+
+Focus on creating complete, wearable outfits using the compatible items listed above.`;
+
+      const stylingResponse = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [{ role: "user", content: stylingPrompt }],
+        max_tokens: 400,
+        temperature: 0.7
+      });
+      
+      const stylingAdvice = stylingResponse.choices[0].message.content;
+      
+      console.log('✅ True Image RAG analysis complete (using compatibility results)!');
+      
+      return res.json({
+        success: true,
+        result: {
+          itemDescription: itemDescription,
+          stylingAdvice: stylingAdvice,
+          compatibleItems: topItems.map(item => ({
+            id: item.id,
+            name: item.tags?.name || 'Wardrobe Item',
+            imageUrl: item.imageUrl,
+            similarity: item.similarity,
+            embeddingType: item.embeddingType || 'compatibility-based'
+          })),
+          retrievedItems: topItems.length,
+          metadata: {
+            processedAt: new Date().toISOString(),
+            ragType: 'compatibility-based-rag',
+            version: 'v2-integrated',
+            useComputedCompatibility: true,
+            compatibilityItemsUsed: topItems.length
           }
-        ]
-      }],
-      max_tokens: 200
-    });
+        }
+      });
+    }
     
-    const itemDescription = descriptionResponse.choices[0].message.content;
-    console.log('📋 Generated description:', itemDescription);
+    // ✅ FALLBACK: Original logic if no compatibility results provided
+    console.log('🔍 No compatibility results provided, using original RAG logic...');
     
-    // Step 3: Generate text embedding for description
+    // Step 1: Generate image embedding via description
+    console.log('🔍 Step 1: Generating image embedding...');
+    const imageResult = await generateImageEmbedding(imageUrl, openai);
+    const imageEmbedding = imageResult.embedding;
+    const itemDescription = imageResult.description;
+    
+    // Step 2: Generate text embedding
+    console.log('📝 Step 2: Generating text embedding...');
     const textEmbedding = await generateTextEmbedding(itemDescription, openai);
     
-    // Step 4: Create hybrid embedding
+    // Step 3: Create hybrid embedding
     let hybridEmbedding;
     if (itemAnalysis && itemAnalysis.embedding) {
-      // Use existing attribute embedding if available
       hybridEmbedding = createHybridEmbedding(
         imageEmbedding, 
         textEmbedding, 
         itemAnalysis.embedding
       );
     } else {
-      // Image + text only
       hybridEmbedding = createHybridEmbedding(
         imageEmbedding, 
         textEmbedding, 
@@ -182,8 +281,8 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
       );
     }
     
-    // Step 5: RAG Retrieval - Search user's wardrobe
-    console.log('🔍 Step 5: Retrieving from wardrobe...');
+    // Step 4: RAG Retrieval - Search user's wardrobe
+    console.log('🔍 Step 4: Retrieving from wardrobe...');
     const wardrobeRef = db.collection('users').doc(userId).collection('wardrobe');
     const wardrobeSnapshot = await wardrobeRef.get();
     
@@ -217,8 +316,8 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
     
     console.log(`📊 Retrieved ${retrievedItems.length} similar items`);
     
-    // Step 6: RAG Generation - Create styling advice
-    console.log('🤖 Step 6: Generating styling advice...');
+    // Step 5: RAG Generation - Create styling advice
+    console.log('🤖 Step 5: Generating styling advice...');
     
     const topItems = retrievedItems.slice(0, 8);
     
@@ -227,13 +326,19 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
         success: true,
         result: {
           itemDescription: itemDescription,
-          stylingAdvice: "This item appears to be quite unique! While it doesn't closely match items in your current wardrobe, it could be a great statement piece to build new outfits around.",
+          stylingAdvice: "This item appears to be quite unique! While it doesn't closely match items in your current wardrobe, it could be a great statement piece to build new outfits around. Consider adding some neutral basics that would complement this piece.",
+          compatibleItems: [],
           retrievedItems: 0,
           hybridEmbedding: hybridEmbedding,
           embeddingStats: {
             imageDims: imageEmbedding.length,
             textDims: textEmbedding.length,
             hybridDims: hybridEmbedding.length
+          },
+          metadata: {
+            processedAt: new Date().toISOString(),
+            ragType: 'original-rag',
+            version: 'v2-fallback'
           }
         }
       });
@@ -268,7 +373,7 @@ Focus on the visual similarities and how pieces would work together aestheticall
     
     const stylingAdvice = stylingResponse.choices[0].message.content;
     
-    console.log('✅ True Image RAG analysis complete!');
+    console.log('✅ True Image RAG analysis complete (fallback mode)!');
     
     res.json({
       success: true,
@@ -283,7 +388,7 @@ Focus on the visual similarities and how pieces would work together aestheticall
           embeddingType: item.embeddingType
         })),
         retrievedItems: retrievedItems.length,
-        hybridEmbedding: hybridEmbedding, // Return for storage
+        hybridEmbedding: hybridEmbedding,
         embeddingStats: {
           imageDims: imageEmbedding.length,
           textDims: textEmbedding.length,
@@ -291,8 +396,8 @@ Focus on the visual similarities and how pieces would work together aestheticall
         },
         metadata: {
           processedAt: new Date().toISOString(),
-          ragType: 'true-image-rag',
-          version: 'v1'
+          ragType: 'original-rag',
+          version: 'v2-fallback'
         }
       }
     });
@@ -306,7 +411,7 @@ Focus on the visual similarities and how pieces would work together aestheticall
   }
 });
 
-// Helper function to update existing wardrobe items with true image embeddings
+// Helper function to update existing wardrobe items
 exports.upgradeWardrobeToImageEmbeddings = functions.https.onRequest(async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
@@ -329,6 +434,10 @@ exports.upgradeWardrobeToImageEmbeddings = functions.https.onRequest(async (req,
       apiKey: process.env.OPENAI_API_KEY || functions.config().openai?.api_key
     });
     
+    if (!openai.apiKey) {
+      throw new Error('OpenAI API key not found');
+    }
+    
     // Get user's wardrobe
     const wardrobeRef = db.collection('users').doc(userId).collection('wardrobe');
     const wardrobeSnapshot = await wardrobeRef.get();
@@ -348,29 +457,11 @@ exports.upgradeWardrobeToImageEmbeddings = functions.https.onRequest(async (req,
       }
       
       try {
-        // Generate image embedding
-        const imageEmbedding = await generateImageEmbedding(item.imageUrl, openai);
+        // Generate image embedding using the fixed function
+        const imageResult = await generateImageEmbedding(item.imageUrl, openai);
+        const imageEmbedding = imageResult.embedding;
+        const description = imageResult.description;
         
-        // Generate description
-        const descriptionResponse = await openai.chat.completions.create({
-          model: "gpt-4o",
-          messages: [{
-            role: "user",
-            content: [
-              {
-                type: "text",
-                text: "Describe this clothing item briefly for search: style, color, type, and key features."
-              },
-              {
-                type: "image_url",
-                image_url: { url: item.imageUrl }
-              }
-            ]
-          }],
-          max_tokens: 100
-        });
-        
-        const description = descriptionResponse.choices[0].message.content;
         const textEmbedding = await generateTextEmbedding(description, openai);
         
         // Create hybrid embedding
@@ -384,7 +475,7 @@ exports.upgradeWardrobeToImageEmbeddings = functions.https.onRequest(async (req,
         await doc.ref.update({
           trueImageEmbedding: hybridEmbedding,
           imageDescription: description,
-          embeddingVersion: 'v2-hybrid',
+          embeddingVersion: 'v2-hybrid-fixed',
           upgradedAt: admin.firestore.FieldValue.serverTimestamp()
         });
         

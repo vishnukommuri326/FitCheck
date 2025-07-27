@@ -14,14 +14,47 @@ export const addUser = async (user, name) => {
   }
 };
 
-export const addGarment = async (userId, imageUrl, tags) => {
+export const addGarment = async (userId, imageUrl, garmentData) => {
   try {
     const wardrobeRef = collection(db, 'users', userId, 'wardrobe');
+    
+    // Extract data from garmentData
+    const { name, type, color, aiResults } = garmentData;
+    
+    // Extract embeddings from aiResults if available
+    let embedding = null;
+    let trueImageEmbedding = null;
+    let imageDescription = null;
+    
+    if (aiResults) {
+      embedding = aiResults.embedding || null;
+      trueImageEmbedding = aiResults.trueImageEmbedding || null;
+      imageDescription = aiResults.imageDescription || null;
+    }
+    
     await addDoc(wardrobeRef, {
       imageUrl: imageUrl,
-      tags: tags,
+      tags: {
+        name: name,
+        type: type,
+        color: color,
+        aiResults: aiResults // Store full AI results for reference
+      },
+      // Store embeddings at root level for easy RAG access
+      embedding: embedding,
+      trueImageEmbedding: trueImageEmbedding,
+      imageDescription: imageDescription,
+      embeddingVersion: trueImageEmbedding ? 'v2-hybrid' : (embedding ? 'v1' : null),
       createdAt: serverTimestamp(),
     });
+    
+    console.log('✅ Saved garment with embeddings:', {
+      hasAttributeEmbedding: !!embedding,
+      hasTrueImageEmbedding: !!trueImageEmbedding,
+      hasDescription: !!imageDescription,
+      itemName: name
+    });
+    
   } catch (error) {
     console.error('Error adding garment to Firestore: ', error);
     throw error;

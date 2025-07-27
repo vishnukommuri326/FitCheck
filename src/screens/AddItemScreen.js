@@ -1,7 +1,4 @@
-
 import React, { useState } from 'react';
-
-
 import {
   View,
   Text,
@@ -21,17 +18,14 @@ import * as ImagePicker from 'expo-image-picker';
 import { Dimensions } from 'react-native';
 import { useRoute } from '@react-navigation/native';
 import { v4 as uuidv4 } from 'uuid';
-import { functions, storage } from '../../firebase.config';
-
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
+import { storage } from '../../firebase.config';
+import { useAuth } from '../context/AuthContext';
+import { addGarment } from '../services/firebase';
 
 const { width } = Dimensions.get('window');
 
 const categories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Footwear', 'Accessories', 'Sets', 'Activewear', 'Swimwear', 'Sleepwear', 'Underwear', 'Bags', 'Jewelry', 'Headwear', 'Eyewear', 'Belts', 'Scarves', 'Gloves', 'Socks', 'Ties', 'Other'];
-
-import { useAuth } from '../context/AuthContext';
-import { addGarment } from '../services/firebase';
 
 const AddItemScreen = ({ navigation }) => {
   const route = useRoute();
@@ -101,57 +95,51 @@ const AddItemScreen = ({ navigation }) => {
     setAiResults(null);
     
     try {
-      console.log('🤖 Starting Gemini AI analysis...');
-      console.log('📱 Local image URI:', imageUri);
+      console.log('🤖 Starting analysis...');
       
-      // Step 1: Upload your image to Firebase Storage
-      console.log('📤 Uploading image to Firebase Storage...');
-      
-      // Convert local image to blob
+      // Upload image (same as BeforeYouBuy)
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      
-      // Create unique filename
       const filename = `temp-analysis/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
       const storageRef = ref(storage, filename);
-      
-      // Upload to Firebase Storage
       await uploadBytes(storageRef, blob);
       const publicImageUrl = await getDownloadURL(storageRef);
       
-      console.log('✅ Image uploaded! Public URL:', publicImageUrl);
+      console.log('✅ Image uploaded:', publicImageUrl);
       
-      // Step 2: Analyze with Gemini Vision API
-      console.log('🔍 Analyzing with Gemini AI...');
-      
-      // Use the Gemini endpoint
-      const geminiUrl = 'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeClothingItem';
-      
-      const analysisResponse = await fetch(geminiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          data: {
-            imageUrl: publicImageUrl,
-            userId: user.uid
-          }
-        })
-      });
-      
+      // Use SAME endpoint as BeforeYouBuy
+      const analysisResponse = await fetch(
+        'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeClothingItem',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: { imageUrl: publicImageUrl, userId: user.uid }
+          })
+        }
+      );
+
       if (!analysisResponse.ok) {
         const errorText = await analysisResponse.text();
-        console.error('Analysis response error:', errorText);
+        console.error('❌ Response error:', errorText);
         throw new Error(`Analysis failed: ${analysisResponse.status}`);
       }
-      
+
       const result = await analysisResponse.json();
-      console.log('✅ Gemini AI analysis complete:', result);
+      console.log('✅ Full result:', result);
       
-      setAiResults(result);
+      // Check what we actually got
+      console.log('📊 Embeddings check:', {
+        hasAttributeEmbedding: !!result.embedding,
+        hasImageEmbedding: !!result.trueImageEmbedding,
+        hasAnalysis: !!result.analysis,
+        attributeLength: result.embedding?.length,
+        imageLength: result.trueImageEmbedding?.length
+      });
       
-      // Auto-fill form with Gemini results
+      setAiResults(result); // Set the FULL result object
+      
+      // Auto-fill form
       if (result.analysis) {
         const analysis = result.analysis;
         if (analysis.itemName && !itemName) setItemName(analysis.itemName);
@@ -159,36 +147,18 @@ const AddItemScreen = ({ navigation }) => {
         if (analysis.color?.primary && !itemColor) setItemColor(analysis.color.primary);
       }
       
-      // Create detailed alert message
-      const analysis = result.analysis;
-      let alertMessage = `✨ Item: ${analysis.itemName}\n`;
-      alertMessage += `🎨 Color: ${analysis.color.primary}`;
-      if (analysis.color.secondary) {
-        alertMessage += ` & ${analysis.color.secondary}`;
-      }
-      alertMessage += `\n👔 Type: ${analysis.type}\n`;
-      alertMessage += `💫 Style: ${analysis.style}\n`;
-      alertMessage += `🧵 Material: ${analysis.material}\n`;
-      alertMessage += `☀️ Season: ${analysis.season}\n`;
-      alertMessage += `\n📊 Confidence: ${Math.round(analysis.confidence.overall * 100)}%`;
-      if (analysis.confidence.notes) {
-        alertMessage += `\n📝 ${analysis.confidence.notes}`;
-      }
+      // Create detailed alert
+      let alertMessage = `✨ Item: ${result.analysis?.itemName || 'Unknown'}\n`;
+      alertMessage += `🎨 Color: ${result.analysis?.color?.primary || 'Unknown'}\n`;
+      alertMessage += `📊 Attribute Embedding: ${result.embedding?.length || 0}D\n`;
+      alertMessage += `🖼️ Image Embedding: ${result.trueImageEmbedding?.length || 0}D\n`;
+      alertMessage += `📝 Description: ${result.imageDescription ? 'Yes' : 'No'}`;
       
-      Alert.alert(
-        '🎉 Gemini AI Analysis Complete!', 
-        alertMessage,
-        [{ text: 'Awesome!', style: 'default' }]
-      );
+      Alert.alert('🎉 Analysis Complete!', alertMessage, [{ text: 'Great!' }]);
       
     } catch (error) {
-      console.error('❌ Gemini analysis failed:', error);
-      
-      Alert.alert(
-        '❌ Analysis Failed', 
-        `${error.message}\n\nMake sure:\n1. Gemini API key is set\n2. Function is deployed\n3. Internet connection is stable`,
-        [{ text: 'OK', style: 'cancel' }]
-      );
+      console.error('❌ Analysis failed:', error);
+      Alert.alert('❌ Analysis Failed', error.message);
     } finally {
       setIsTestingAI(false);
     }
@@ -204,13 +174,14 @@ const AddItemScreen = ({ navigation }) => {
         itemName,
         itemType,
         itemColor,
+        aiResults, // Pass AI results to recommendations
       });
     }, 1000);
   };
 
   const handleAddItem = async () => {
     if (!imageUri || !itemName.trim()) {
-      alert('Please add a name, color, and item name.');
+      alert('Please add a name and select an image.');
       return;
     }
     setIsSaving(true);
@@ -225,23 +196,28 @@ const AddItemScreen = ({ navigation }) => {
       const downloadURL = await getDownloadURL(storageRef);
       console.log('Image uploaded to Firebase Storage. Download URL:', downloadURL);
 
-      // 2. Save item to Firestore
+      // 2. Save item to Firestore with AI results
       await addGarment(user.uid, downloadURL, {
         name: itemName,
         type: itemType,
         color: itemColor,
-        aiResults: aiResults, // Save AI results if available
+        aiResults: aiResults, // This includes both embeddings
       });
 
-      navigation.navigate('Wardrobe', { newItemAdded: true });
+      // Show success message
+      Alert.alert(
+        '✅ Item Added!',
+        `${itemName} has been added to your wardrobe${aiResults ? ' with AI analysis' : ''}.`,
+        [{ text: 'Great!', onPress: () => navigation.navigate('Wardrobe', { newItemAdded: true }) }]
+      );
+
     } catch (error) {
       console.error('Error adding item:', error);
-      alert('Failed to save item. Please try again.');
+      Alert.alert('❌ Failed to Save', 'Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
-
 
   return (
     <SafeAreaView style={styles.container}>
@@ -326,41 +302,51 @@ const AddItemScreen = ({ navigation }) => {
                     <Ionicons name="sparkles" size={16} color="#8B5CF6" />
                   )}
                   <Text style={styles.aiTestButtonText}>
-                    {isTestingAI ? 'Analyzing with Gemini...' : 'Analyze with AI'}
+                    {isTestingAI ? 'Analyzing with AI...' : 'Analyze with AI'}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
           </View>
 
-          {/* AI Results Card - Updated for Gemini */}
+          {/* AI Results Card - UPDATED with error handling */}
           {aiResults && aiResults.analysis && (
             <View style={styles.aiResultsCard}>
-              <Text style={styles.aiResultsTitle}>✨ Gemini AI Analysis</Text>
+              <Text style={styles.aiResultsTitle}>✨ AI Analysis Complete</Text>
               
               <View style={styles.aiResultSection}>
                 <Text style={styles.aiResultLabel}>Detected Item:</Text>
                 <Text style={styles.aiResultValue}>
-                  {aiResults.analysis.itemName}
+                  {aiResults.analysis.itemName || 'Unknown'}
                 </Text>
               </View>
               
               <View style={styles.aiResultSection}>
                 <Text style={styles.aiResultLabel}>Colors:</Text>
                 <Text style={styles.aiResultValue}>
-                  {aiResults.analysis.color.primary}
-                  {aiResults.analysis.color.secondary && ` & ${aiResults.analysis.color.secondary}`}
+                  {aiResults.analysis.color?.primary || 'Unknown'}
+                  {aiResults.analysis.color?.secondary && ` & ${aiResults.analysis.color.secondary}`}
                 </Text>
               </View>
               
               <View style={styles.aiResultSection}>
                 <Text style={styles.aiResultLabel}>Style & Material:</Text>
                 <Text style={styles.aiResultValue}>
-                  {aiResults.analysis.style} • {aiResults.analysis.material}
+                  {aiResults.analysis.style || 'Unknown'} • {aiResults.analysis.material || 'Unknown'}
                 </Text>
               </View>
               
-              {aiResults.analysis.confidence.notes && (
+              {/* NEW: Show embedding status */}
+              <View style={styles.aiResultSection}>
+                <Text style={styles.aiResultLabel}>AI Embeddings:</Text>
+                <Text style={styles.aiResultValue}>
+                  Attributes: {aiResults.embedding?.length || 0}D{'\n'}
+                  Image: {aiResults.trueImageEmbedding?.length || 0}D{'\n'}
+                  Status: {aiResults.trueImageEmbedding ? '🟢 Full AI' : aiResults.embedding ? '🟡 Basic' : '🔴 None'}
+                </Text>
+              </View>
+              
+              {aiResults.analysis.confidence?.notes && (
                 <View style={styles.aiResultSection}>
                   <Text style={styles.aiResultLabel}>Notes:</Text>
                   <Text style={styles.aiResultValue}>

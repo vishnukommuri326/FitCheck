@@ -191,30 +191,31 @@ const HomeScreen = ({ navigation }) => {
             <Text style={styles.statLabel}>This Week</Text>
           </View>
         </View>
-        {/* In-Store Scanner */}
+
+        {/* Before You Buy Scanner - UPDATED */}
         <View style={styles.scannerSection}>
           <View style={styles.scannerCard}>
             <View style={styles.scannerHeader}>
               <View style={styles.scannerIconContainer}>
-                <Ionicons name="barcode-outline" size={32} color="#F97316" />
+                <Ionicons name="scan-outline" size={32} color="#F97316" />
               </View>
               <View style={styles.scannerTextContainer}>
-                <Text style={styles.scannerTitle}>In-Store Assistant</Text>
-                <Text style={styles.scannerSubtitle}>Scan & check compatibility</Text>
+                <Text style={styles.scannerTitle}>Before You Buy</Text>
+                <Text style={styles.scannerSubtitle}>AI wardrobe compatibility check</Text>
               </View>
             </View>
             
             <Text style={styles.scannerDescription}>
-              Shopping? Scan items to see if they match your wardrobe
+              Scan items in-store to see if they match your existing wardrobe
             </Text>
             
             <TouchableOpacity 
               style={styles.scanButton}
-              onPress={() => navigation.navigate('Scanner')}
+              onPress={() => navigation.navigate('BeforeYouBuy')}
               activeOpacity={0.8}
             >
               <Ionicons name="scan" size={20} color="#FFFFFF" />
-              <Text style={styles.scanButtonText}>Start Scanning</Text>
+              <Text style={styles.scanButtonText}>Check Compatibility</Text>
             </TouchableOpacity>
             
             <View style={styles.scannerFeatures}>
@@ -224,18 +225,15 @@ const HomeScreen = ({ navigation }) => {
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.featureText}>Price comparison</Text>
+                <Text style={styles.featureText}>Versatility scoring</Text>
               </View>
               <View style={styles.featureItem}>
                 <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.featureText}>Style suggestions</Text>
+                <Text style={styles.featureText}>Smart recommendations</Text>
               </View>
             </View>
           </View>
         </View>
-
-        {/* Weekly Outfit Planner */}
-        
 
         {/* Recent Items */}
         <View style={styles.recentSection}>
@@ -249,8 +247,6 @@ const HomeScreen = ({ navigation }) => {
               <Ionicons name="arrow-forward" size={16} color="#F97316" />
             </TouchableOpacity>
           </View>
-          
-          
           
           <ScrollView 
             horizontal

@@ -36,7 +36,7 @@ export const AuthProvider = ({ children }) => {
     scopes: ['openid', 'profile', 'email'],
   })
 
-  // listen for auth state changes (Firebase)
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (usr) => {
       if (usr) {

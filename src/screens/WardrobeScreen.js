@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-
 import { useFocusEffect } from '@react-navigation/native';
 import {
   View,
@@ -110,11 +109,18 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMo
             <Ionicons name={item.isFavorite ? "heart" : "heart-outline"} size={20} color="#FFFFFF" testID={`favorite-icon-${item.id}`} />
           </TouchableOpacity>
           <View style={styles.itemInfo}>
-            <Text style={styles.itemName} numberOfLines={1}>{item.tags.name || ''}</Text>
-            <Text style={styles.itemDetails}>{item.tags.type}</Text>
+            {/* FIXED: Safe access to item data */}
+            <Text style={styles.itemName} numberOfLines={1}>
+              {item.tags?.name || item.name || 'Unnamed Item'}
+            </Text>
+            <Text style={styles.itemDetails}>
+              {item.tags?.type || item.type || 'Unknown Type'}
+            </Text>
             <View style={styles.colorRow}>
-              <View style={[styles.colorDot, { backgroundColor: (item.tags.color || '#000000').toLowerCase() }]} />
-              <Text style={styles.colorText}>{item.tags.color || ''}</Text>
+              <View style={[styles.colorDot, { backgroundColor: (item.tags?.color || item.color || '#000000').toLowerCase() }]} />
+              <Text style={styles.colorText}>
+                {item.tags?.color || item.color || 'Unknown Color'}
+              </Text>
             </View>
           </View>
         </TouchableOpacity>
@@ -203,29 +209,37 @@ const WardrobeScreen = ({ navigation, route }) => {
     ]).start();
   }, []);
 
+  // FIXED: filteredItems logic
   const filteredItems = wardrobeItems.filter(item => {
-    const matchesSearch = (item.tags.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (item.tags.color || '').toLowerCase().includes(searchQuery.toLowerCase());
+    // Safe access to search fields
+    const itemName = item.tags?.name || item.name || '';
+    const itemColor = item.tags?.color || item.color || '';
+    
+    const matchesSearch = itemName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         itemColor.toLowerCase().includes(searchQuery.toLowerCase());
     
     if (selectedCategory === 'All') {
       return matchesSearch;
     } else if (selectedCategory === 'Favorites') {
       return item.isFavorite && matchesSearch;
     } else { // Specific category like 'Tops', 'Bottoms', etc.
-      return item.tags.type === selectedCategory && matchesSearch;
+      const itemType = item.tags?.type || item.type || '';
+      return itemType === selectedCategory && matchesSearch;
     }
   });
 
+  // FIXED: handleEdit function
   const handleEdit = (item) => {
-    console.log('Edit item:', item.tags.name);
+    console.log('Edit item:', item.tags?.name || item.name || 'Unnamed');
     setSelectedItem(item);
-    setEditName(item.tags.name);
-    setEditType(item.tags.type);
-    setEditColor(item.tags.color);
+    setEditName(item.tags?.name || item.name || '');
+    setEditType(item.tags?.type || item.type || '');
+    setEditColor(item.tags?.color || item.color || '');
     setModalVisible(false);
     setEditModalVisible(true);
   };
 
+  // FIXED: handleSaveEdit function
   const handleSaveEdit = async () => {
     if (!editName || !editType || !editColor) {
       alert('Please fill in all fields');
@@ -233,12 +247,22 @@ const WardrobeScreen = ({ navigation, route }) => {
     }
 
     try {
-      const updatedTags = {
+      // Update both old and new data structure
+      const updatedData = {
+        tags: {
+          name: editName,
+          type: editType,
+          color: editColor,
+          // Preserve any existing aiResults
+          ...(selectedItem.tags?.aiResults && { aiResults: selectedItem.tags.aiResults })
+        },
+        // Also update root level for compatibility
         name: editName,
         type: editType,
-        color: editColor,
+        color: editColor
       };
-      await updateGarment(user.uid, selectedItem.id, { tags: updatedTags });
+      
+      await updateGarment(user.uid, selectedItem.id, updatedData);
       loadWardrobeItems();
       setEditModalVisible(false);
       console.log('Item updated successfully');
@@ -248,12 +272,14 @@ const WardrobeScreen = ({ navigation, route }) => {
     }
   };
 
+  // FIXED: handleDelete function
   const handleDelete = async (itemToDelete) => {
-    console.log('Delete item:', itemToDelete.tags.name);
+    const itemName = itemToDelete.tags?.name || itemToDelete.name || 'Unnamed Item';
+    console.log('Delete item:', itemName);
     try {
       await deleteGarment(user.uid, itemToDelete.id);
       loadWardrobeItems();
-      console.log('Item deleted from Firestore:', itemToDelete.tags.name);
+      console.log('Item deleted from Firestore:', itemName);
       closeModal(); // Close modal if item was deleted from detail view
     } catch (error) {
       console.error('Error deleting item from Firestore:', error);
@@ -486,36 +512,87 @@ const WardrobeScreen = ({ navigation, route }) => {
                     resizeMode="cover"
                   />
 
-                  {/* Item Info */}
+                  {/* Item Info - FIXED */}
                   <View style={styles.modalInfo}>
-                    <Text style={styles.modalItemName}>{selectedItem.tags.name}</Text>
+                    <Text style={styles.modalItemName}>
+                      {selectedItem.tags?.name || selectedItem.name || 'Unnamed Item'}
+                    </Text>
                     
                     <View style={styles.modalDetailsRow}>
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Type</Text>
-                        <Text style={styles.modalDetailValue}>{selectedItem.tags.type}</Text>
+                        <Text style={styles.modalDetailValue}>
+                          {selectedItem.tags?.type || selectedItem.type || 'Unknown Type'}
+                        </Text>
                       </View>
                       <View style={styles.modalDetailItem}>
                         <Text style={styles.modalDetailLabel}>Color</Text>
                         <View style={styles.modalColorRow}>
-                          <View style={[styles.modalColorDot, { backgroundColor: (selectedItem.tags.color || '#000000').toLowerCase() }]} />
-                          <Text style={styles.modalDetailValue}>{selectedItem.tags.color || ''}</Text>
+                          <View style={[styles.modalColorDot, { 
+                            backgroundColor: (selectedItem.tags?.color || selectedItem.color || '#000000').toLowerCase() 
+                          }]} />
+                          <Text style={styles.modalDetailValue}>
+                            {selectedItem.tags?.color || selectedItem.color || 'Unknown Color'}
+                          </Text>
                         </View>
                       </View>
                     </View>
+
+                    {/* AI Analysis Section - NEW */}
+                    {(selectedItem.tags?.aiResults || selectedItem.trueImageEmbedding) && (
+                      <View style={styles.modalSection}>
+                        <Text style={styles.modalSectionTitle}>AI Analysis</Text>
+                        <View style={styles.modalTagsContainer}>
+                          {selectedItem.tags?.aiResults?.analysis?.style && (
+                            <View style={styles.modalTag}>
+                              <Text style={styles.modalTagText}>
+                                {selectedItem.tags.aiResults.analysis.style}
+                              </Text>
+                            </View>
+                          )}
+                          {selectedItem.tags?.aiResults?.analysis?.season && (
+                            <View style={styles.modalTag}>
+                              <Text style={styles.modalTagText}>
+                                {selectedItem.tags.aiResults.analysis.season}
+                              </Text>
+                            </View>
+                          )}
+                          {selectedItem.tags?.aiResults?.analysis?.occasion && (
+                            <View style={styles.modalTag}>
+                              <Text style={styles.modalTagText}>
+                                {selectedItem.tags.aiResults.analysis.occasion}
+                              </Text>
+                            </View>
+                          )}
+                          {selectedItem.trueImageEmbedding && (
+                            <View style={[styles.modalTag, { backgroundColor: '#10B981' }]}>
+                              <Text style={[styles.modalTagText, { color: 'white' }]}>
+                                🧠 AI Enhanced
+                              </Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    )}
 
                     {/* Additional Details */}
                     <View style={styles.modalSection}>
                       <Text style={styles.modalSectionTitle}>Additional Details</Text>
                       <View style={styles.modalTagsContainer}>
                         <View style={styles.modalTag}>
-                          <Text style={styles.modalTagText}>Casual</Text>
+                          <Text style={styles.modalTagText}>
+                            {selectedItem.tags?.aiResults?.analysis?.style || 'Casual'}
+                          </Text>
                         </View>
                         <View style={styles.modalTag}>
-                          <Text style={styles.modalTagText}>Summer</Text>
+                          <Text style={styles.modalTagText}>
+                            {selectedItem.tags?.aiResults?.analysis?.season || 'Summer'}
+                          </Text>
                         </View>
                         <View style={styles.modalTag}>
-                          <Text style={styles.modalTagText}>Everyday</Text>
+                          <Text style={styles.modalTagText}>
+                            {selectedItem.tags?.aiResults?.analysis?.occasion || 'Everyday'}
+                          </Text>
                         </View>
                       </View>
                     </View>
@@ -524,7 +601,9 @@ const WardrobeScreen = ({ navigation, route }) => {
                     <View style={styles.modalSection}>
                       <Text style={styles.modalSectionTitle}>Notes</Text>
                       <Text style={styles.modalNotes}>
-                        Perfect for casual outings. Goes well with denim or khakis.
+                        {selectedItem.imageDescription || 
+                         selectedItem.tags?.aiResults?.imageDescription || 
+                         'Perfect for casual outings. Goes well with denim or khakis.'}
                       </Text>
                     </View>
 
@@ -599,9 +678,9 @@ const WardrobeScreen = ({ navigation, route }) => {
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedItem && (
                 <>
-                  {/* Item Image Preview */}
+                  {/* Item Image Preview - FIXED */}
                   <Image 
-                    source={{ uri: selectedItem.imageUri }} 
+                    source={{ uri: selectedItem.imageUrl }} 
                     style={styles.editImagePreview}
                     resizeMode="cover"
                   />
@@ -626,7 +705,7 @@ const WardrobeScreen = ({ navigation, route }) => {
                         showsHorizontalScrollIndicator={false}
                         style={styles.typeSelector}
                       >
-                        {categories.filter(cat => cat !== 'All').map((type) => (
+                        {categories.filter(cat => cat !== 'All' && cat !== 'Favorites').map((type) => (
                           <TouchableOpacity
                             key={type}
                             style={[

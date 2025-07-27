@@ -1,13 +1,72 @@
 // functions/src/gemini-vision.js
 const functions = require("firebase-functions");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const OpenAI = require("openai");
 
 // Load environment variables in development
 if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 }
 
-// Enhanced embedding generation function
+// Helper function to generate a detailed description using Gemini Vision Pro
+const generateDetailedDescription = async (imageUrl) => {
+  try {
+    console.log('📝 Generating detailed description with Gemini Vision Pro...');
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      throw new Error('Gemini API key not found.');
+    }
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-pro-vision" });
+
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error(`Failed to fetch image: ${imageResponse.status}`);
+    }
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
+
+    const prompt = "Describe this clothing item in detail for fashion search. Include: exact style, colors, materials, patterns, fit, silhouette, and distinctive features. Use specific fashion terminology.";
+
+    const result = await model.generateContent([prompt, { inlineData: { data: base64Image, mimeType: "image/jpeg" } }]);
+    const description = result.response.text();
+    console.log('✅ Generated description:', description);
+    return description;
+  } catch (error) {
+    console.error('❌ Error generating detailed description:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to generate image description.', error.message);
+  }
+};
+
+// Helper function to generate a RAG embedding using OpenAI
+const generateRAGEmbedding = async (description) => {
+  try {
+    console.log('🖼️ Generating RAG embedding with OpenAI...');
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+
+    if (!openai.apiKey) {
+      throw new Error('OpenAI API key not found.');
+    }
+
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-large",
+      input: description,
+      encoding_format: "float"
+    });
+
+    const embedding = embeddingResponse.data[0].embedding;
+    console.log(`✅ Generated RAG embedding: ${embedding.length} dimensions`);
+    return embedding;
+  } catch (error) {
+    console.error('❌ Error generating RAG embedding:', error);
+    throw new functions.https.HttpsError('internal', 'Failed to generate RAG embedding.', error.message);
+  }
+};
+
+
+// Enhanced embedding generation function (KEEP EXISTING)
 const generateEmbedding = (analysis) => {
   const embedding = [];
   
@@ -133,11 +192,69 @@ const generateEmbedding = (analysis) => {
   // Confidence score
   embedding.push(analysis.confidence.overall || 0.5);
   
-  console.log(`🧮 Generated embedding vector (${embedding.length} dimensions):`, 
+  console.log(`🧮 Generated attribute embedding vector (${embedding.length} dimensions):`, 
     embedding.map(v => Math.round(v * 100) / 100));
   
   return embedding;
 };
+
+// NEW: Generate true image embedding using OpenAI
+const generateTrueImageEmbedding = async (imageUrl) => {
+  try {
+    console.log('🖼️ Generating true image embedding...');
+    
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
+    
+    if (!openai.apiKey) {
+      console.warn('⚠️ OpenAI API key not found, skipping image embedding');
+      return null;
+    }
+    
+    // Generate detailed description first
+    const descriptionResponse = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [{
+        role: "user",
+        content: [
+          {
+            type: "text",
+            text: "Describe this clothing item in detail for fashion search. Include: exact style, colors, materials, patterns, fit, silhouette, and distinctive features. Use specific fashion terminology."
+          },
+          {
+            type: "image_url",
+            image_url: { url: imageUrl }
+          }
+        ]
+      }],
+      max_tokens: 150
+    });
+    
+    const description = descriptionResponse.choices[0].message.content;
+    console.log('📝 Generated description:', description);
+    
+    // Generate text embedding from description
+    const embeddingResponse = await openai.embeddings.create({
+      model: "text-embedding-3-large",
+      input: description,
+      encoding_format: "float"
+    });
+    
+    const imageEmbedding = embeddingResponse.data[0].embedding;
+    console.log(`✅ Generated true image embedding: ${imageEmbedding.length} dimensions`);
+    
+    return {
+      embedding: imageEmbedding,
+      description: description
+    };
+    
+  } catch (error) {
+    console.error('❌ Failed to generate true image embedding:', error);
+    return null;
+  }
+};
+
 
 // Gemini-based clothing analysis function
 exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
@@ -166,7 +283,7 @@ exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
     
     // Initialize Gemini with your API key
     // Priority: 1. Environment variable, 2. Firebase config
-    const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
+    const apiKey = process.env.GEMINI_API_KEY;
     
     if (!apiKey) {
       throw new Error('Gemini API key not found. Set GEMINI_API_KEY in .env or Firebase config.');
@@ -271,30 +388,38 @@ Respond with ONLY a JSON object in this exact format:
       };
     }
     
-    // Generate embedding from analysis
-    console.log('🧮 Generating embedding vector...');
-    const embedding = generateEmbedding(analysis);
+    // Generate attribute embedding from analysis
+    console.log('🧮 Generating attribute embedding vector...');
+    const attributeEmbedding = generateEmbedding(analysis);
+    
+    // Generate true image embedding (NEW!)
+    console.log('🖼️ Generating true image embedding...');
+    const trueImageResult = await generateTrueImageEmbedding(imageUrl);
     
     // Build the response
     const finalResponse = {
       success: true,
       source: 'gemini-vision',
       analysis: analysis,
-      embedding: embedding, // ✨ NEW: Include embedding vector
+      embedding: attributeEmbedding, // Keep for backward compatibility
+      trueImageEmbedding: trueImageResult?.embedding || null, // NEW!
+      imageDescription: trueImageResult?.description || null, // NEW!
       metadata: {
         processedAt: new Date().toISOString(),
         userId: userId || 'anonymous',
         imageUrl: imageUrl,
         model: 'gemini-2.0-flash-exp',
-        embeddingVersion: 'v1', // Track embedding version for future updates
-        embeddingDimensions: embedding.length
+        embeddingVersion: 'v2-hybrid', // Updated version
+        attributeEmbeddingDimensions: attributeEmbedding.length,
+        trueImageEmbeddingDimensions: trueImageResult?.embedding?.length || 0
       }
     };
     
-    console.log('✅ Sending response with embedding:', {
+    console.log('✅ Sending response with both embeddings:', {
       analysis: analysis.itemName,
-      embeddingLength: embedding.length,
-      embeddingPreview: embedding.slice(0, 10).map(v => Math.round(v * 100) / 100)
+      attributeEmbeddingLength: attributeEmbedding.length,
+      trueImageEmbeddingLength: trueImageResult?.embedding?.length || 0,
+      hasDescription: !!trueImageResult?.description
     });
     
     res.json(finalResponse);
@@ -306,5 +431,44 @@ Respond with ONLY a JSON object in this exact format:
       error: error.message,
       details: error.stack
     });
+  }
+});
+
+// New, dedicated RAG analysis function
+exports.analyzeImageForRAG = functions.https.onCall(async (data, context) => {
+  try {
+    const { imageUrl } = data;
+    const userId = context.auth?.uid;
+
+    if (!userId) {
+      throw new functions.https.HttpsError('unauthenticated', 'You must be logged in to analyze an image.');
+    }
+    
+    if (!imageUrl) {
+      throw new functions.https.HttpsError('invalid-argument', 'Missing "imageUrl" in request data.');
+    }
+
+    console.log(`🚀 RAG analysis started for user ${userId} with image:`, imageUrl);
+
+    // 1. Generate detailed description with Gemini Vision
+    const description = await generateDetailedDescription(imageUrl);
+
+    // 2. Generate high-quality embedding from the description
+    const embedding = await generateRAGEmbedding(description);
+
+    console.log(`✅ RAG analysis successful for user ${userId}`);
+
+    return {
+      success: true,
+      description: description,
+      embedding: embedding,
+    };
+
+  } catch (error) {
+    console.error('❌ Error in analyzeImageForRAG:', error);
+    if (error instanceof functions.https.HttpsError) {
+      throw error;
+    }
+    throw new functions.https.HttpsError('internal', 'An unexpected error occurred during RAG analysis.', error.message);
   }
 });

@@ -5,7 +5,7 @@ admin.initializeApp();
 const testFunctions = require('./src/test-functions');
 const geminiFunctions = require('./src/gemini-vision');
 const trueImageRAG = require('./src/true-image-rag');
-const wardrobeCompatibility = require('./src/wardrobe-compatibility');
+
 
 // Export all functions for deployment
 module.exports = {
@@ -17,7 +17,4 @@ module.exports = {
   
   // True Image RAG functions
   ...trueImageRAG,
-  
-  // Wardrobe compatibility functions
-  ...wardrobeCompatibility
 };

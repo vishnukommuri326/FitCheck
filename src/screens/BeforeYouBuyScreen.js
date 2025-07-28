@@ -1,3 +1,7 @@
+// Updated BeforeYouBuyScreen.js - Single API call to consolidated Image RAG
+import { styles } from '../styles/BeforeYouBuyScreenStyles.js';
+import { BlurView } from 'expo-blur';
+import AnalyzingAnimation from '../components/AnalyzingAnimation';
 import React, { useState, useEffect } from 'react';
 import {
   View,
@@ -26,10 +30,14 @@ const BeforeYouBuyScreen = ({ navigation }) => {
   const [imageUri, setImageUri] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState(null);
-  const [compatibilityResults, setCompatibilityResults] = useState(null);
   const [publicImageUrl, setPublicImageUrl] = useState(null);
-  const [isRagAnalyzing, setIsRagAnalyzing] = useState(false);
+  
+  // ✅ SIMPLIFIED: Single state for all results
   const [ragResults, setRagResults] = useState(null);
+  
+  // Item selection states (for styling customization)
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [showItemSelection, setShowItemSelection] = useState(false);
 
   const handleCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -70,17 +78,18 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     }
   };
 
+  // ✅ SIMPLIFIED: Single analysis function
   const analyzeItem = async (imageUri) => {
     setIsAnalyzing(true);
     setAnalysis(null);
-    setCompatibilityResults(null);
-    setPublicImageUrl(null);
     setRagResults(null);
+    setSelectedItems([]);
+    setShowItemSelection(false);
 
     try {
-      console.log('🔍 Starting Before You Buy analysis...');
+      console.log('🔍 Starting comprehensive AI analysis...');
       
-      // Upload image to Firebase
+      // Step 1: Upload image to Firebase
       const response = await fetch(imageUri);
       const blob = await response.blob();
       const filename = `temp-analysis/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
@@ -91,7 +100,7 @@ const BeforeYouBuyScreen = ({ navigation }) => {
 
       console.log('📤 Image uploaded, analyzing with Gemini...');
 
-      // Get Gemini analysis with embeddings
+      // Step 2: Get Gemini analysis (for structured data + embeddings)
       const analysisResponse = await fetch(
         'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeClothingItem',
         {
@@ -104,38 +113,44 @@ const BeforeYouBuyScreen = ({ navigation }) => {
       );
 
       if (!analysisResponse.ok) {
-        throw new Error(`Analysis failed: ${analysisResponse.status}`);
+        throw new Error(`Gemini analysis failed: ${analysisResponse.status}`);
       }
 
       const analysisResult = await analysisResponse.json();
       setAnalysis(analysisResult);
 
-      console.log('🧮 Analysis complete, checking wardrobe compatibility...');
+      console.log('🧮 Gemini analysis complete, running comprehensive Image RAG...');
 
-      // Get wardrobe compatibility
-      const compatibilityResponse = await fetch(
-        'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeWardrobeCompatibility',
+      // ✅ Step 3: ONE API call for everything (compatibility + duplicates + styling)
+      const ragResponse = await fetch(
+        'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeWithTrueImageRAG',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             data: {
-              newItemEmbedding: analysisResult.embedding,
-              newItemAnalysis: analysisResult.analysis,
-              userId: user.uid
+              imageUrl: imageUrl,
+              userId: user.uid,
+              itemAnalysis: analysisResult // Pass Gemini results
             }
           })
         }
       );
 
-      if (!compatibilityResponse.ok) {
-        throw new Error(`Compatibility analysis failed: ${compatibilityResponse.status}`);
+      if (!ragResponse.ok) {
+        const errorText = await ragResponse.text();
+        throw new Error(`Image RAG analysis failed: ${ragResponse.status} ${errorText}`);
       }
 
-      const compatibilityResult = await compatibilityResponse.json();
-      setCompatibilityResults(compatibilityResult);
+      const ragResult = await ragResponse.json();
+      setRagResults(ragResult.result);
 
-      console.log('✅ Complete analysis finished!');
+      // ✅ Auto-select all compatible items initially
+      if (ragResult.result.compatibleItems?.length > 0) {
+        setSelectedItems(ragResult.result.compatibleItems.map(item => item.id));
+      }
+
+      console.log('✅ Complete Image RAG analysis finished!');
 
     } catch (error) {
       console.error('❌ Analysis failed:', error);
@@ -148,26 +163,27 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     }
   };
 
-  // ✅ UPDATED: Now passes compatibility results to RAG
-  const handleRagAnalysis = async () => {
-    if (!publicImageUrl) {
-      Alert.alert("Error", "Image URL not found. Please try analyzing the item again.");
-      return;
-    }
-    
-    if (!compatibilityResults) {
-      Alert.alert("Error", "Compatibility analysis not found. Please try analyzing the item again.");
+  // ✅ SIMPLIFIED: Generate custom styling with selected items
+  const handleCustomStyling = async () => {
+    if (selectedItems.length === 0) {
+      Alert.alert("No Items Selected", "Please select at least one item to generate custom styling advice.");
       return;
     }
 
-    setIsRagAnalyzing(true);
-    setRagResults(null);
+    if (selectedItems.length === ragResults?.compatibleItems?.length) {
+      Alert.alert("Same Selection", "You've selected all items - this is the same as the current styling advice.");
+      return;
+    }
 
     try {
-      console.log('🚀 Starting True Image RAG analysis...');
-      console.log('📋 Using compatibility results:', compatibilityResults.compatibleItems?.length, 'items');
+      console.log('🎨 Generating custom styling advice...');
 
-      const ragResponse = await fetch(
+      // Filter to only selected items
+      const selectedCompatibleItems = ragResults.compatibleItems.filter(
+        item => selectedItems.includes(item.id)
+      );
+
+      const customRagResponse = await fetch(
         'https://us-central1-fitcheck-1c224.cloudfunctions.net/analyzeWithTrueImageRAG',
         {
           method: 'POST',
@@ -177,60 +193,86 @@ const BeforeYouBuyScreen = ({ navigation }) => {
               imageUrl: publicImageUrl,
               userId: user.uid,
               itemAnalysis: analysis,
-              compatibleItems: compatibilityResults.compatibleItems // ← NEW: Pass compatibility results
+              compatibleItems: selectedCompatibleItems // Pass only selected items
             }
           })
         }
       );
 
-      if (!ragResponse.ok) {
-        const errorText = await ragResponse.text();
-        throw new Error(`True Image RAG analysis failed: ${ragResponse.status} ${errorText}`);
+      if (!customRagResponse.ok) {
+        throw new Error(`Custom styling failed: ${customRagResponse.status}`);
       }
 
-      const ragResult = await ragResponse.json();
-      setRagResults(ragResult.result);
-      console.log('✅ True Image RAG analysis complete!');
+      const customResult = await customRagResponse.json();
+      
+      // Update styling advice with custom results
+      setRagResults(prev => ({
+        ...prev,
+        stylingAdvice: customResult.result.stylingAdvice,
+        customStyling: true,
+        selectedItemCount: selectedItems.length
+      }));
+
+      console.log('✅ Custom styling advice generated!');
 
     } catch (error) {
-      console.error('❌ RAG Analysis failed:', error);
-      Alert.alert(
-        'Styling Advice Failed',
-        `${error.message}\n\nPlease try again.`
-      );
-    } finally {
-      setIsRagAnalyzing(false);
+      console.error('❌ Custom styling failed:', error);
+      Alert.alert('Custom Styling Failed', error.message);
     }
   };
 
-  const renderCompatibleItem = ({ item }) => (
-    <View style={styles.compatibleItem}>
+  // Item selection functions
+  const toggleItemSelection = (itemId) => {
+    setSelectedItems(prev => {
+      if (prev.includes(itemId)) {
+        return prev.filter(id => id !== itemId);
+      } else {
+        return [...prev, itemId];
+      }
+    });
+  };
+
+  const selectAllItems = () => {
+    if (ragResults?.compatibleItems) {
+      setSelectedItems(ragResults.compatibleItems.map(item => item.id));
+    }
+  };
+
+  const clearAllSelections = () => {
+    setSelectedItems([]);
+  };
+
+  // Render functions
+  const renderCompatibleItem = ({ item, showSelection = false }) => (
+    <TouchableOpacity 
+      style={[
+        styles.compatibleItem,
+        showSelection && selectedItems.includes(item.id) && styles.selectedItem
+      ]}
+      onPress={showSelection ? () => toggleItemSelection(item.id) : undefined}
+      activeOpacity={showSelection ? 0.7 : 1}
+    >
       <Image source={{ uri: item.imageUrl }} style={styles.compatibleImage} />
       <View style={styles.compatibleInfo}>
         <Text style={styles.compatibleName} numberOfLines={2}>
-          {item.tags?.name || 'Wardrobe Item'}
+          {item.name || 'Wardrobe Item'}
         </Text>
         <Text style={styles.compatibilityScore}>
           {Math.round(item.similarity * 100)}% match
         </Text>
       </View>
-    </View>
+      {showSelection && (
+        <View style={styles.selectionIndicator}>
+          <Ionicons 
+            name={selectedItems.includes(item.id) ? "checkmark-circle" : "ellipse-outline"} 
+            size={20} 
+            color={selectedItems.includes(item.id) ? "#10B981" : "#9CA3AF"} 
+          />
+        </View>
+      )}
+    </TouchableOpacity>
   );
 
-  const getRecommendationColor = () => {
-    if (!compatibilityResults) return '#6B7280';
-    
-    // ✅ UPDATED: Check for duplicates first
-    if (compatibilityResults.hasDuplicates) return '#EF4444'; // Red for duplicates
-    
-    const count = compatibilityResults.totalCompatibleItems;
-    if (count >= 8) return '#10B981'; // Green
-    if (count >= 4) return '#F59E0B'; // Yellow
-    if (count >= 2) return '#F97316'; // Orange
-    return '#EF4444'; // Red
-  };
-
-  // ✅ NEW: Render duplicate items
   const renderDuplicateItem = ({ item }) => (
     <View style={styles.duplicateItem}>
       <Image source={{ uri: item.imageUrl }} style={styles.duplicateImage} />
@@ -247,6 +289,18 @@ const BeforeYouBuyScreen = ({ navigation }) => {
       </View>
     </View>
   );
+
+  const getRecommendationColor = () => {
+    if (!ragResults) return '#6B7280';
+    
+    if (ragResults.hasDuplicates) return '#EF4444';
+    
+    const count = ragResults.totalCompatibleItems;
+    if (count >= 8) return '#10B981';
+    if (count >= 4) return '#F59E0B';
+    if (count >= 2) return '#F97316';
+    return '#EF4444';
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -271,7 +325,7 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             </View>
             <Text style={styles.cameraTitle}>Scan an item in the store</Text>
             <Text style={styles.cameraSubtitle}>
-              See how it works with your wardrobe before buying
+              AI will analyze compatibility, detect duplicates, and provide styling advice
             </Text>
             
             <View style={styles.buttonContainer}>
@@ -291,10 +345,11 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             <Image source={{ uri: imageUri }} style={styles.analyzedImage} />
             {isAnalyzing && (
               <View style={styles.analyzingOverlay}>
-                <ActivityIndicator size="large" color="#8B5CF6" />
-                <Text style={styles.analyzingText}>Analyzing with AI...</Text>
+                <BlurView intensity={10} style={styles.blurContainer} />
+                <AnalyzingAnimation />
+                <Text style={styles.analyzingText}>Analyzing Your Item...</Text>
                 <Text style={styles.analyzingSubtext}>
-                  Checking compatibility with your wardrobe
+                  Our AI is checking for matches in your wardrobe.
                 </Text>
               </View>
             )}
@@ -326,8 +381,8 @@ const BeforeYouBuyScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/*Duplicate Warning Section */}
-        {compatibilityResults && compatibilityResults.hasDuplicates && (
+        {/* ✅ Duplicate Warning Section */}
+        {ragResults && ragResults.hasDuplicates && (
           <View style={styles.duplicateWarningCard}>
             <View style={styles.duplicateWarningHeader}>
               <Ionicons name="warning" size={24} color="#EF4444" />
@@ -335,16 +390,16 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             </View>
             
             <Text style={styles.duplicateWarningText}>
-              {compatibilityResults.duplicateWarning}
+              {ragResults.duplicateWarning}
             </Text>
             
-            {compatibilityResults.duplicateItems?.length > 0 && (
+            {ragResults.duplicateItems?.length > 0 && (
               <View style={styles.duplicatesSection}>
                 <Text style={styles.duplicatesSectionTitle}>
                   Items you already have:
                 </Text>
                 <FlatList
-                  data={compatibilityResults.duplicateItems}
+                  data={ragResults.duplicateItems}
                   renderItem={renderDuplicateItem}
                   keyExtractor={(item) => item.id}
                   horizontal
@@ -365,105 +420,106 @@ const BeforeYouBuyScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* Results */}
-        {compatibilityResults && (
+        {/* ✅ Results Section */}
+        {ragResults && (
           <View style={styles.resultsSection}>
             <View style={[styles.recommendationCard, { borderLeftColor: getRecommendationColor() }]}>
               <Text style={[styles.recommendationText, { color: getRecommendationColor() }]}>
-                {compatibilityResults.recommendation}
+                {ragResults.recommendation}
               </Text>
               
               <View style={styles.statsRow}>
                 <View style={styles.stat}>
                   <Text style={styles.statNumber}>
-                    {compatibilityResults.totalCompatibleItems}
+                    {ragResults.totalCompatibleItems}
                   </Text>
                   <Text style={styles.statLabel}>Compatible Items</Text>
                 </View>
                 <View style={styles.stat}>
                   <Text style={styles.statNumber}>
-                    {Math.round(compatibilityResults.versatilityScore * 100)}%
+                    {Math.round(ragResults.versatilityScore * 100)}%
                   </Text>
                   <Text style={styles.statLabel}>Versatility Score</Text>
                 </View>
               </View>
-
-              {/* ✅ NEW: Show what it would work with even if duplicate */}
-              {compatibilityResults.hasDuplicates && compatibilityResults.compatibleItems?.length > 0 && (
-                <Text style={styles.wouldWorkWithText}>
-                  💡 If you did buy this, it would work with {compatibilityResults.totalCompatibleItems} items in your wardrobe.
-                </Text>
-              )}
             </View>
 
-            {compatibilityResults.compatibleItems?.length > 0 && (
+            {ragResults.compatibleItems?.length > 0 && (
               <View style={styles.compatibleSection}>
-                <Text style={styles.sectionTitle}>
-                  {compatibilityResults.hasDuplicates ? 'Would work with:' : 'Items this works with:'} ({compatibilityResults.compatibleItems.length})
-                </Text>
+                <View style={styles.sectionHeaderRow}>
+                  <Text style={styles.sectionTitle}>
+                    Items this works with ({ragResults.compatibleItems.length}):
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.selectModeButton}
+                    onPress={() => setShowItemSelection(!showItemSelection)}
+                  >
+                    <Ionicons 
+                      name={showItemSelection ? "checkmark-done" : "options"} 
+                      size={16} 
+                      color="#8B5CF6" 
+                    />
+                    <Text style={styles.selectModeText}>
+                      {showItemSelection ? 'Done' : 'Select'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {showItemSelection && (
+                  <View style={styles.selectionControls}>
+                    <TouchableOpacity style={styles.selectionControlButton} onPress={selectAllItems}>
+                      <Text style={styles.selectionControlText}>Select All</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.selectionControlButton} onPress={clearAllSelections}>
+                      <Text style={styles.selectionControlText}>Clear All</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.selectedCountText}>
+                      {selectedItems.length} of {ragResults.compatibleItems.length} selected
+                    </Text>
+                  </View>
+                )}
+
                 <FlatList
-                  data={compatibilityResults.compatibleItems}
-                  renderItem={renderCompatibleItem}
+                  data={ragResults.compatibleItems}
+                  renderItem={({ item }) => renderCompatibleItem({ item, showSelection: showItemSelection })}
                   keyExtractor={(item) => item.id}
                   horizontal
                   showsHorizontalScrollIndicator={false}
                   contentContainerStyle={styles.compatibleList}
                 />
+
+                {/* ✅ Custom styling button */}
+                {showItemSelection && selectedItems.length > 0 && selectedItems.length < ragResults.compatibleItems.length && (
+                  <TouchableOpacity 
+                    style={styles.customStylingButton}
+                    onPress={handleCustomStyling}
+                  >
+                    <Ionicons name="sparkles" size={20} color="#8B5CF6" />
+                    <Text style={styles.customStylingText}>
+                      Get Custom Styling ({selectedItems.length} items)
+                    </Text>
+                  </TouchableOpacity>
+                )}
               </View>
             )}
           </View>
         )}
 
-        {/* AI Styling Advice Section - Only show if there are compatible items */}
-        {compatibilityResults && !ragResults && compatibilityResults.compatibleItems?.length > 0 && (
-          <View style={styles.ragSection}>
-            <TouchableOpacity style={styles.ragButton} onPress={handleRagAnalysis} disabled={isRagAnalyzing}>
-              {isRagAnalyzing ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <>
-                  <Ionicons name="sparkles" size={20} color="#FFF" />
-                  <Text style={styles.ragButtonText}>Get AI Styling Advice</Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* RAG Loading State */}
-        {isRagAnalyzing && !ragResults && (
-          <View style={styles.ragLoadingCard}>
-            <ActivityIndicator size="large" color="#8B5CF6" />
-            <Text style={styles.ragLoadingText}>
-              🤖 Creating personalized outfits...
-            </Text>
-            <Text style={styles.ragLoadingSubtext}>
-              Analyzing {compatibilityResults?.totalCompatibleItems || 0} compatible items
-            </Text>
-          </View>
-        )}
-
-        {/* RAG Results */}
-        {ragResults && (
+        {/* ✅ AI Styling Advice */}
+        {ragResults && ragResults.stylingAdvice && (
           <View style={styles.ragResultCard}>
-            <Text style={styles.analysisTitle}>🤖 AI Stylist</Text>
+            <Text style={styles.analysisTitle}>
+              🤖 AI Stylist {ragResults.customStyling ? '(Custom Selection)' : ''}
+            </Text>
             <Text style={styles.ragDescriptionTitle}>Item Description:</Text>
             <Text style={styles.ragDescription}>{ragResults.itemDescription}</Text>
             <Text style={styles.stylingAdviceTitle}>Styling Advice:</Text>
             <Text style={styles.stylingAdvice}>{ragResults.stylingAdvice}</Text>
             
-            {ragResults.compatibleItems && ragResults.compatibleItems.length > 0 && (
-              <>
-                <Text style={styles.sectionTitle}>Outfit Ideas with:</Text>
-                <FlatList
-                  data={ragResults.compatibleItems}
-                  renderItem={renderCompatibleItem}
-                  keyExtractor={(item) => item.id}
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={styles.compatibleList}
-                />
-              </>
+            {ragResults.customStyling && (
+              <Text style={styles.customNote}>
+                💡 Based on {ragResults.selectedItemCount} selected items from your wardrobe
+              </Text>
             )}
           </View>
         )}
@@ -477,9 +533,9 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             onPress={() => {
               setImageUri(null);
               setAnalysis(null);
-              setCompatibilityResults(null);
-              setPublicImageUrl(null);
               setRagResults(null);
+              setSelectedItems([]);
+              setShowItemSelection(false);
             }}
           >
             <Ionicons name="refresh" size={20} color="#6B7280" />
@@ -504,520 +560,6 @@ const BeforeYouBuyScreen = ({ navigation }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFBF5',
-  },
-  scrollContent: {
-    paddingBottom: 100,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 16,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E5EA',
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: -12,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
-    letterSpacing: -0.3,
-  },
-  headerSpacer: {
-    width: 44,
-  },
-  cameraSection: {
-    alignItems: 'center',
-    paddingVertical: 64,
-    paddingHorizontal: 24,
-  },
-  scanIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#FFF7ED',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  cameraTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  cameraSubtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 32,
-    lineHeight: 24,
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  cameraButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F97316',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    gap: 8,
-  },
-  galleryButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF7ED',
-    paddingHorizontal: 24,
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#F97316',
-    gap: 8,
-  },
-  buttonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  galleryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#F97316',
-  },
-  imageSection: {
-    margin: 24,
-    borderRadius: 16,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  analyzedImage: {
-    width: '100%',
-    aspectRatio: 3/4,
-    backgroundColor: '#F3F4F6',
-  },
-  analyzingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  analyzingText: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginTop: 16,
-  },
-  analyzingSubtext: {
-    fontSize: 14,
-    color: '#E5E7EB',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  analysisCard: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  analysisTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 16,
-  },
-  analysisGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  analysisItem: {
-    flex: 1,
-    minWidth: '45%',
-  },
-  analysisLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#6B7280',
-    marginBottom: 4,
-    textTransform: 'uppercase',
-  },
-  analysisValue: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333333',
-    textTransform: 'capitalize',
-  },
-  // ✅ NEW: Duplicate warning styles
-  duplicateWarningCard: {
-    marginHorizontal: 24,
-    marginBottom: 16,
-    backgroundColor: '#FEF2F2',
-    borderRadius: 16,
-    padding: 20,
-    borderLeftWidth: 4,
-    borderLeftColor: '#EF4444',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#EF4444',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  duplicateWarningHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  duplicateWarningTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#EF4444',
-    marginLeft: 8,
-  },
-  duplicateWarningText: {
-    fontSize: 16,
-    color: '#DC2626',
-    lineHeight: 24,
-    marginBottom: 16,
-  },
-  duplicatesSection: {
-    marginBottom: 16,
-  },
-  duplicatesSectionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#7F1D1D',
-    marginBottom: 12,
-  },
-  duplicatesList: {
-    paddingRight: 24,
-  },
-  duplicateItem: {
-    width: 120,
-    marginRight: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: '#FCA5A5',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#EF4444',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  duplicateImage: {
-    width: '100%',
-    height: 100,
-    backgroundColor: '#F3F4F6',
-  },
-  duplicateInfo: {
-    padding: 8,
-  },
-  duplicateName: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#7F1D1D',
-    marginBottom: 2,
-  },
-  duplicateSimilarity: {
-    fontSize: 11,
-    color: '#EF4444',
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  duplicateReason: {
-    fontSize: 10,
-    color: '#991B1B',
-    fontStyle: 'italic',
-  },
-  viewWardrobeButton: {
-    backgroundColor: '#DC2626',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-  },
-  viewWardrobeButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  wouldWorkWithText: {
-    fontSize: 14,
-    color: '#6B7280',
-    fontStyle: 'italic',
-    marginTop: 12,
-    lineHeight: 20,
-  },
-  resultsSection: {
-    marginHorizontal: 24,
-  },
-  recommendationCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 20,
-    borderLeftWidth: 4,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  recommendationText: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 16,
-    lineHeight: 24,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  stat: {
-    alignItems: 'center',
-  },
-  statNumber: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333333',
-  },
-  statLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  compatibleSection: {
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 16,
-  },
-  compatibleList: {
-    paddingRight: 24,
-  },
-  compatibleItem: {
-    width: 120,
-    marginRight: 12,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
-  },
-  compatibleImage: {
-    width: '100%',
-    height: 120,
-    backgroundColor: '#F3F4F6',
-  },
-  compatibleInfo: {
-    padding: 8,
-  },
-  compatibleName: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#333333',
-    marginBottom: 4,
-  },
-  compatibilityScore: {
-    fontSize: 11,
-    color: '#10B981',
-    fontWeight: '600',
-  },
-  ragSection: {
-    marginHorizontal: 24,
-    marginVertical: 20,
-  },
-  ragButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
-    paddingVertical: 16,
-    borderRadius: 12,
-    gap: 10,
-  },
-  ragButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  // ✅ NEW: RAG loading styles
-  ragLoadingCard: {
-    marginHorizontal: 24,
-    marginVertical: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 24,
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#8B5CF6',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  ragLoadingText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  ragLoadingSubtext: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  ragResultCard: {
-    marginHorizontal: 24,
-    marginBottom: 20,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  ragDescriptionTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  ragDescription: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 16,
-    lineHeight: 20,
-  },
-  stylingAdviceTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 8,
-  },
-  stylingAdvice: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 22,
-    marginBottom: 16,
-  },
-  actionBar: {
-    position: 'absolute',
-    bottom: 24,
-    left: 24,
-    right: 24,
-    flexDirection: 'row',
-    gap: 12,
-  },
-  retakeButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  retakeText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#6B7280',
-  },
-  addButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#8B5CF6',
-    borderRadius: 12,
-    paddingVertical: 16,
-    gap: 8,
-  },
-  addButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-});
+
 
 export default BeforeYouBuyScreen;

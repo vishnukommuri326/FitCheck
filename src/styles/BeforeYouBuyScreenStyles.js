@@ -587,7 +587,7 @@ export const styles = StyleSheet.create({
     marginBottom: 20,
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 20,
+    padding: 24, // Increased padding
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -611,25 +611,72 @@ export const styles = StyleSheet.create({
   ragDescription: {
     fontSize: 15,
     color: '#333333',
-    marginBottom: 20,
+    marginBottom: 24, // Increased margin bottom
     lineHeight: 22,
     paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
-  stylingAdviceTitle: {
+  stylingAdviceSectionTitle: {
+    fontSize: 16, // Slightly larger font size
+    fontWeight: '700', // Bolder
+    color: '#333333', // Darker color
+    marginBottom: 16, // Increased margin bottom
+    textTransform: 'none', // No uppercase
+    letterSpacing: 0, // No letter spacing
+    paddingBottom: 8, // Padding for the border
+    borderBottomWidth: 1, // Add a subtle border
+    borderBottomColor: '#F3F4F6', // Light border color
+  },
+  outfitListContainer: {
+    paddingBottom: 10, // Space at the bottom of the list
+  },
+  outfitCard: {
+    backgroundColor: '#F9FAFB', // Light background for cards
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12, // Space between cards
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  outfitTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 8,
+  },
+  outfitDescription: {
+    fontSize: 14,
+    color: '#4B5563',
+    lineHeight: 22,
+    marginBottom: 12,
+  },
+  outfitItemsContainer: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+    paddingTop: 12,
+  },
+  outfitItemsTitle: {
     fontSize: 13,
     fontWeight: '600',
     color: '#6B7280',
-    marginBottom: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    marginBottom: 6,
   },
-  stylingAdvice: {
-    fontSize: 15,
-    color: '#333333',
-    lineHeight: 24,
-    marginBottom: 16,
+  outfitItemText: {
+    fontSize: 13,
+    color: '#4B5563',
+    marginBottom: 2,
   },
   customNote: {
     fontSize: 13,

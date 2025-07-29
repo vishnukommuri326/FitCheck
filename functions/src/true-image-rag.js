@@ -2,6 +2,7 @@
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const OpenAI = require("openai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
@@ -305,31 +306,19 @@ const isDuplicate = (newItemAnalysis, existingItemAnalysis, similarity) => {
 
 // ===== IMAGE ANALYSIS FUNCTIONS =====
 
-// Generate image embedding by first describing the image
-const generateImageEmbedding = async (imageUrl, openai) => {
+// Generate image embedding by using Gemini's analysis (no GPT-4o vision needed)
+const generateImageEmbedding = async (geminiAnalysis, openai) => {
   try {
-    console.log('🖼️ Generating image embedding via description...');
+    console.log('🖼️ Generating image embedding from Gemini analysis...');
     
-    const descriptionResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Describe this clothing item in detail for fashion similarity analysis. Include: exact colors, materials, style, fit, patterns, and distinctive visual features."
-          },
-          {
-            type: "image_url",
-            image_url: { url: imageUrl }
-          }
-        ]
-      }],
-      max_tokens: 150
-    });
+    // Create a rich description from Gemini's structured analysis
+    const imageDescription = `${geminiAnalysis.itemName}: A ${geminiAnalysis.style} ${geminiAnalysis.type} made of ${geminiAnalysis.material}. 
+Primary color is ${geminiAnalysis.color.primary}${geminiAnalysis.color.secondary ? ` with ${geminiAnalysis.color.secondary} accents` : ''}. 
+Pattern: ${geminiAnalysis.color.pattern || 'solid'}. 
+Best suited for ${geminiAnalysis.occasion} occasions during ${geminiAnalysis.season} season.
+${geminiAnalysis.confidence.notes ? `Additional details: ${geminiAnalysis.confidence.notes}` : ''}`;
     
-    const imageDescription = descriptionResponse.choices[0].message.content;
-    console.log('📝 Generated image description:', imageDescription);
+    console.log('📝 Generated description from Gemini:', imageDescription);
     
     const embeddingResponse = await openai.embeddings.create({
       model: "text-embedding-3-large",
@@ -382,28 +371,24 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
       throw new Error('OpenAI API key not found');
     }
     
-    // Step 1: Generate detailed description
-    console.log('📝 Step 1: Generating detailed description...');
-    const descriptionResponse = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [{
-        role: "user",
-        content: [
-          {
-            type: "text",
-            text: "Describe this clothing item in detail for fashion styling. Include: style, colors, materials, patterns, fit, occasion suitability, and any distinctive features. Be specific and use fashion terminology."
-          },
-          {
-            type: "image_url",
-            image_url: { url: imageUrl }
-          }
-        ]
-      }],
-      max_tokens: 200
-    });
+    // Step 1: Generate detailed description from Gemini analysis
+    console.log('📝 Step 1: Using Gemini analysis for description...');
+    let itemDescription = '';
     
-    const itemDescription = descriptionResponse.choices[0].message.content;
-    console.log('📋 Generated description:', itemDescription);
+    if (itemAnalysis?.analysis) {
+      // Use Gemini's analysis to create description
+      const analysis = itemAnalysis.analysis;
+      itemDescription = `${analysis.itemName}: A ${analysis.style} ${analysis.type} made of ${analysis.material}. 
+Primary color is ${analysis.color.primary}${analysis.color.secondary ? ` with ${analysis.color.secondary} accents` : ''}. 
+Pattern: ${analysis.color.pattern || 'solid'}. 
+Best suited for ${analysis.occasion} occasions during ${analysis.season} season.
+${analysis.confidence.notes ? `Additional details: ${analysis.confidence.notes}` : ''}`;
+    } else {
+      // Fallback - this shouldn't happen if itemAnalysis is provided
+      itemDescription = "A clothing item being analyzed for wardrobe compatibility.";
+    }
+    
+    console.log('📋 Item description:', itemDescription);
     
     // Step 2: Search user's wardrobe with fashion logic
     console.log('🔍 Step 2: Searching wardrobe with fashion logic...');
@@ -419,11 +404,14 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
     if (itemAnalysis?.embedding) {
       queryEmbedding = itemAnalysis.embedding;
       console.log('📊 Using existing attribute embedding for comparison');
-    } else {
-      // Generate new embedding if not provided
-      const imageResult = await generateImageEmbedding(imageUrl, openai);
+    } else if (itemAnalysis?.analysis) {
+      // Generate embedding from Gemini analysis
+      const imageResult = await generateImageEmbedding(itemAnalysis.analysis, openai);
       queryEmbedding = imageResult.embedding;
-      console.log('📊 Generated new image embedding for comparison');
+      console.log('📊 Generated new image embedding from Gemini analysis');
+    } else {
+      // This shouldn't happen if itemAnalysis is provided
+      throw new Error('No analysis data available for embedding generation');
     }
     
     wardrobeSnapshot.forEach(doc => {
@@ -552,23 +540,39 @@ exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => 
 Based on their wardrobe, here are the compatible items:
 ${wardrobeContext}
 
-Create personalized styling advice that:
-1. Suggests 2-3 specific outfit combinations using their existing pieces
-2. Explains why these combinations work (colors, styles, occasions)
-3. Recommends specific occasions for each outfit
-4. Keep it friendly, encouraging, and actionable
-5. Reference the specific item names from their wardrobe
+Create personalized styling advice in JSON format. The JSON should be an array of 2-3 outfit objects. Each outfit object should have the following keys:
+- "title": A concise title for the outfit (e.g., "Casual Day Out").
+- "description": A detailed explanation of the outfit, including why the combinations work (colors, styles, occasions), and specific occasions for the outfit. Reference the specific item names from their wardrobe.
+- "items": An array of strings, where each string is the name of an item from the user's wardrobe used in this outfit.
 
-Focus on creating complete, wearable outfits using the compatible items listed above.`;
+Example JSON structure:
+[
+  {
+    "title": "Outfit 1 Title",
+    "description": "Detailed description of outfit 1...",
+    "items": ["Item A", "Item B"]
+  },
+  {
+    "title": "Outfit 2 Title",
+    "description": "Detailed description of outfit 2...",
+    "items": ["Item C", "Item D"]
+  }
+]
 
-      const stylingResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: stylingPrompt }],
-        max_tokens: 400,
-        temperature: 0.7
-      });
-      
-      stylingAdvice = stylingResponse.choices[0].message.content;
+Focus on creating complete, wearable outfits using the compatible items listed above. Ensure the JSON is valid and can be directly parsed.`;
+
+      const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
+      if (!apiKey) {
+        throw new Error('Gemini API key not found. Set GEMINI_API_KEY in .env or Firebase config.');
+      }
+
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp"});
+
+      const result = await model.generateContent(stylingPrompt);
+      const response = await result.response;
+      stylingAdvice = response.text();
+      console.log("Raw Styling Advice from Gemini:", stylingAdvice);
     } else {
       stylingAdvice = "This item appears to be quite unique! While it doesn't closely match items in your current wardrobe based on fashion compatibility rules, it could be a great statement piece to build new outfits around.";
     }

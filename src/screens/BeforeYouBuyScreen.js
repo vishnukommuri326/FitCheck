@@ -1,4 +1,4 @@
-// Updated BeforeYouBuyScreen.js - Single API call to consolidated Image RAG
+// Updated BeforeYouBuyScreen.js - Fixed JSON parsing and nested list issues
 import { styles } from '../styles/BeforeYouBuyScreenStyles.js';
 import { BlurView } from 'expo-blur';
 import AnalyzingAnimation from '../components/AnalyzingAnimation';
@@ -24,6 +24,60 @@ import { storage } from '../../firebase.config';
 import { useAuth } from '../context/AuthContext';
 
 const { width } = Dimensions.get('window');
+
+// ✅ IMPROVED: Robust JSON parsing function for styling advice
+const parseStyleAdviceJSON = (rawResponse) => {
+  try {
+    // Handle case where response is already parsed
+    if (typeof rawResponse === 'object' && Array.isArray(rawResponse)) {
+      return rawResponse.map(outfit => ({
+        title: outfit.title || "Styling Suggestion",
+        description: outfit.description || "No description available",
+        items: Array.isArray(outfit.items) ? outfit.items : [],
+        occasion: outfit.occasion || "Various occasions"
+      }));
+    }
+    
+    // Clean the response first
+    let cleanedResponse = rawResponse.trim();
+    
+    // Remove any markdown code blocks
+    cleanedResponse = cleanedResponse.replace(/```json\s*|\s*```/g, '');
+    
+    // Remove any leading/trailing text that isn't JSON
+    const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      cleanedResponse = jsonMatch[0];
+    }
+    
+    // Try to parse
+    const parsed = JSON.parse(cleanedResponse);
+    
+    // Validate structure
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed.map(outfit => ({
+        title: outfit.title || "Styling Suggestion",
+        description: outfit.description || "No description available",
+        items: Array.isArray(outfit.items) ? outfit.items : [],
+        occasion: outfit.occasion || "Various occasions"
+      }));
+    }
+    
+    throw new Error("Invalid array structure");
+    
+  } catch (error) {
+    console.error("❌ JSON parsing failed:", error);
+    console.error("Raw response:", rawResponse);
+    
+    // Fallback: Create a simple structure from the raw text
+    return [{
+      title: "Styling Advice",
+      description: typeof rawResponse === 'string' ? rawResponse : "AI styling advice available",
+      items: [],
+      occasion: "Various occasions"
+    }];
+  }
+};
 
 const BeforeYouBuyScreen = ({ navigation }) => {
   const { user } = useAuth();
@@ -144,23 +198,13 @@ const BeforeYouBuyScreen = ({ navigation }) => {
 
       const ragResult = await ragResponse.json();
       
-      // Attempt to parse stylingAdvice as JSON
-      let parsedStylingAdvice = ragResult.result.stylingAdvice;
-      try {
-        // Trim whitespace and newlines before parsing
-        const cleanStylingAdvice = ragResult.result.stylingAdvice.trim();
-        parsedStylingAdvice = JSON.parse(cleanStylingAdvice);
-      } catch (e) {
-        console.error("Failed to parse stylingAdvice JSON. Raw string:", ragResult.result.stylingAdvice, "Error:", e);
-        // Fallback to original string wrapped in an array if parsing fails
-        parsedStylingAdvice = [{ title: "Styling Advice", description: ragResult.result.stylingAdvice, items: [] }];
-      }
+      // ✅ IMPROVED: Use robust JSON parsing function
+      const parsedStylingAdvice = parseStyleAdviceJSON(ragResult.result.stylingAdvice);
 
       setRagResults({
         ...ragResult.result,
         stylingAdvice: parsedStylingAdvice
       });
-      console.log("Parsed Styling Advice:", parsedStylingAdvice);
 
       // ✅ Auto-select all compatible items initially
       if (ragResult.result.compatibleItems?.length > 0) {
@@ -222,16 +266,8 @@ const BeforeYouBuyScreen = ({ navigation }) => {
 
       const customResult = await customRagResponse.json();
       
-      // Attempt to parse stylingAdvice as JSON for custom styling
-      let parsedCustomStylingAdvice = customResult.result.stylingAdvice;
-      try {
-        const cleanCustomStylingAdvice = customResult.result.stylingAdvice.trim();
-        parsedCustomStylingAdvice = JSON.parse(cleanCustomStylingAdvice);
-      } catch (e) {
-        console.error("Failed to parse custom stylingAdvice JSON. Raw string:", customResult.result.stylingAdvice, "Error:", e);
-        // Fallback to original string if parsing fails
-        parsedCustomStylingAdvice = [{ title: "Custom Styling Advice", description: customResult.result.stylingAdvice, items: [] }];
-      }
+      // ✅ IMPROVED: Use robust JSON parsing function
+      const parsedCustomStylingAdvice = parseStyleAdviceJSON(customResult.result.stylingAdvice);
       
       // Update styling advice with custom results
       setRagResults(prev => ({
@@ -330,20 +366,41 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     return '#EF4444';
   };
 
-  const renderOutfitCard = ({ item }) => (
-    <View style={styles.outfitCard}>
-      <Text style={styles.outfitTitle}>{item.title}</Text>
-      <Text style={styles.outfitDescription}>{item.description}</Text>
-      {item.items && item.items.length > 0 && (
-        <View style={styles.outfitItemsContainer}>
-          <Text style={styles.outfitItemsTitle}>Items Used:</Text>
-          {item.items.map((outfitItem, index) => (
-            <Text key={index} style={styles.outfitItemText}>- {outfitItem}</Text>
-          ))}
-        </View>
-      )}
-    </View>
-  );
+  // ✅ IMPROVED: Render outfit card with better error handling
+  const renderOutfitCard = ({ item, index }) => {
+    // Validate item structure
+    if (!item || typeof item !== 'object') {
+      console.warn('Invalid outfit item:', item);
+      return null;
+    }
+
+    return (
+      <View style={styles.outfitCard} key={index}>
+        <Text style={styles.outfitTitle}>
+          {item.title || `Outfit ${index + 1}`}
+        </Text>
+        <Text style={styles.outfitDescription}>
+          {item.description || 'No description available'}
+        </Text>
+        {item.items && Array.isArray(item.items) && item.items.length > 0 && (
+          <View style={styles.outfitItemsContainer}>
+            <Text style={styles.outfitItemsTitle}>Items Used:</Text>
+            {item.items.map((outfitItem, idx) => (
+              <Text key={idx} style={styles.outfitItemText}>
+                • {outfitItem || 'Item'}
+              </Text>
+            ))}
+          </View>
+        )}
+        {item.occasion && (
+          <View style={styles.outfitOccasionContainer}>
+            <Ionicons name="calendar-outline" size={14} color="#6B7280" />
+            <Text style={styles.outfitOccasion}>{item.occasion}</Text>
+          </View>
+        )}
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -548,7 +605,7 @@ const BeforeYouBuyScreen = ({ navigation }) => {
           </View>
         )}
 
-        {/* ✅ AI Styling Advice */}
+        {/* ✅ AI Styling Advice - Structured outfit suggestions with improved error handling */}
         {ragResults && ragResults.stylingAdvice && (
           <View style={styles.ragResultCard}>
             <Text style={styles.analysisTitle}>
@@ -557,14 +614,25 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             <Text style={styles.ragDescriptionTitle}>Item Description:</Text>
             <Text style={styles.ragDescription}>{ragResults.itemDescription}</Text>
             
-            <Text style={styles.stylingAdviceSectionTitle}>Styling Advice:</Text>
-            <FlatList
-              data={ragResults.stylingAdvice}
-              renderItem={renderOutfitCard}
-              keyExtractor={(item, index) => `outfit-${index}`}
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.outfitListContainer}
-            />
+            <Text style={styles.stylingAdviceTitle}>Outfit Suggestions:</Text>
+            
+            {/* ✅ IMPROVED: Render outfit cards with error handling */}
+            <View style={styles.outfitListContainer}>
+              {Array.isArray(ragResults.stylingAdvice) && ragResults.stylingAdvice.length > 0 ? (
+                ragResults.stylingAdvice.map((outfit, index) => 
+                  renderOutfitCard({ item: outfit, index })
+                ).filter(Boolean) // Remove any null renders
+              ) : (
+                <View style={styles.outfitCard}>
+                  <Text style={styles.outfitTitle}>Styling Advice</Text>
+                  <Text style={styles.outfitDescription}>
+                    {typeof ragResults.stylingAdvice === 'string' 
+                      ? ragResults.stylingAdvice 
+                      : 'Custom styling advice generated for your selection.'}
+                  </Text>
+                </View>
+              )}
+            </View>
             
             {ragResults.customStyling && (
               <Text style={styles.customNote}>
@@ -609,7 +677,5 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
-
-
 
 export default BeforeYouBuyScreen;

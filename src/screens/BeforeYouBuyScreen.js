@@ -143,7 +143,24 @@ const BeforeYouBuyScreen = ({ navigation }) => {
       }
 
       const ragResult = await ragResponse.json();
-      setRagResults(ragResult.result);
+      
+      // Attempt to parse stylingAdvice as JSON
+      let parsedStylingAdvice = ragResult.result.stylingAdvice;
+      try {
+        // Trim whitespace and newlines before parsing
+        const cleanStylingAdvice = ragResult.result.stylingAdvice.trim();
+        parsedStylingAdvice = JSON.parse(cleanStylingAdvice);
+      } catch (e) {
+        console.error("Failed to parse stylingAdvice JSON. Raw string:", ragResult.result.stylingAdvice, "Error:", e);
+        // Fallback to original string wrapped in an array if parsing fails
+        parsedStylingAdvice = [{ title: "Styling Advice", description: ragResult.result.stylingAdvice, items: [] }];
+      }
+
+      setRagResults({
+        ...ragResult.result,
+        stylingAdvice: parsedStylingAdvice
+      });
+      console.log("Parsed Styling Advice:", parsedStylingAdvice);
 
       // ✅ Auto-select all compatible items initially
       if (ragResult.result.compatibleItems?.length > 0) {
@@ -205,10 +222,21 @@ const BeforeYouBuyScreen = ({ navigation }) => {
 
       const customResult = await customRagResponse.json();
       
+      // Attempt to parse stylingAdvice as JSON for custom styling
+      let parsedCustomStylingAdvice = customResult.result.stylingAdvice;
+      try {
+        const cleanCustomStylingAdvice = customResult.result.stylingAdvice.trim();
+        parsedCustomStylingAdvice = JSON.parse(cleanCustomStylingAdvice);
+      } catch (e) {
+        console.error("Failed to parse custom stylingAdvice JSON. Raw string:", customResult.result.stylingAdvice, "Error:", e);
+        // Fallback to original string if parsing fails
+        parsedCustomStylingAdvice = [{ title: "Custom Styling Advice", description: customResult.result.stylingAdvice, items: [] }];
+      }
+      
       // Update styling advice with custom results
       setRagResults(prev => ({
         ...prev,
-        stylingAdvice: customResult.result.stylingAdvice,
+        stylingAdvice: parsedCustomStylingAdvice,
         customStyling: true,
         selectedItemCount: selectedItems.length
       }));
@@ -301,6 +329,21 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     if (count >= 2) return '#F97316';
     return '#EF4444';
   };
+
+  const renderOutfitCard = ({ item }) => (
+    <View style={styles.outfitCard}>
+      <Text style={styles.outfitTitle}>{item.title}</Text>
+      <Text style={styles.outfitDescription}>{item.description}</Text>
+      {item.items && item.items.length > 0 && (
+        <View style={styles.outfitItemsContainer}>
+          <Text style={styles.outfitItemsTitle}>Items Used:</Text>
+          {item.items.map((outfitItem, index) => (
+            <Text key={index} style={styles.outfitItemText}>- {outfitItem}</Text>
+          ))}
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -513,8 +556,15 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             </Text>
             <Text style={styles.ragDescriptionTitle}>Item Description:</Text>
             <Text style={styles.ragDescription}>{ragResults.itemDescription}</Text>
-            <Text style={styles.stylingAdviceTitle}>Styling Advice:</Text>
-            <Text style={styles.stylingAdvice}>{ragResults.stylingAdvice}</Text>
+            
+            <Text style={styles.stylingAdviceSectionTitle}>Styling Advice:</Text>
+            <FlatList
+              data={ragResults.stylingAdvice}
+              renderItem={renderOutfitCard}
+              keyExtractor={(item, index) => `outfit-${index}`}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.outfitListContainer}
+            />
             
             {ragResults.customStyling && (
               <Text style={styles.customNote}>

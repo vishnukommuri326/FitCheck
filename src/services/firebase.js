@@ -21,15 +21,34 @@ export const addGarment = async (userId, imageUrl, garmentData) => {
     // Extract data from garmentData
     const { name, type, color, aiResults } = garmentData;
     
-    // Extract embeddings from aiResults if available
-    let embedding = null;
-    let trueImageEmbedding = null;
+    // 🆕 Extract all embedding types from aiResults
+    let attributeEmbedding = null;
+    let textEmbedding = null;
+    let clipEmbedding = null;
     let imageDescription = null;
+    let embeddingVersion = null;
     
     if (aiResults) {
-      embedding = aiResults.embedding || null;
-      trueImageEmbedding = aiResults.trueImageEmbedding || null;
+      // Attribute embedding (45D)
+      attributeEmbedding = aiResults.embedding || null;
+      
+      // Text embedding (3072D) - check multiple possible fields
+      textEmbedding = aiResults.textEmbedding || aiResults.trueImageEmbedding || null;
+      
+      // CLIP embedding (512D)
+      clipEmbedding = aiResults.clipEmbedding || null;
+      
+      // Description
       imageDescription = aiResults.imageDescription || null;
+      
+      // Determine version
+      if (clipEmbedding && textEmbedding) {
+        embeddingVersion = 'hybrid-v3';
+      } else if (textEmbedding) {
+        embeddingVersion = 'text-v2';
+      } else if (attributeEmbedding) {
+        embeddingVersion = 'attribute-v1';
+      }
     }
     
     await addDoc(wardrobeRef, {
@@ -40,18 +59,27 @@ export const addGarment = async (userId, imageUrl, garmentData) => {
         color: color,
         aiResults: aiResults // Store full AI results for reference
       },
-      // Store embeddings at root level for easy RAG access
-      embedding: embedding,
-      trueImageEmbedding: trueImageEmbedding,
+      
+      // 🆕 Store all embeddings at root level for easy access
+      embedding: attributeEmbedding,          // 45D attribute embedding
+      textEmbedding: textEmbedding,          // 3072D text embedding
+      clipEmbedding: clipEmbedding,          // 512D CLIP embedding
+      
+      // Legacy field for backward compatibility
+      trueImageEmbedding: textEmbedding,
+      
+      // Metadata
       imageDescription: imageDescription,
-      embeddingVersion: trueImageEmbedding ? 'v2-hybrid' : (embedding ? 'v1' : null),
+      embeddingVersion: embeddingVersion,
       createdAt: serverTimestamp(),
     });
     
-    console.log('✅ Saved garment with embeddings:', {
-      hasAttributeEmbedding: !!embedding,
-      hasTrueImageEmbedding: !!trueImageEmbedding,
+    console.log('✅ Saved garment with hybrid embeddings:', {
+      hasAttributeEmbedding: !!attributeEmbedding,
+      hasTextEmbedding: !!textEmbedding,
+      hasClipEmbedding: !!clipEmbedding,
       hasDescription: !!imageDescription,
+      embeddingVersion: embeddingVersion,
       itemName: name
     });
     

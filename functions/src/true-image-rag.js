@@ -1,7 +1,8 @@
-// functions/src/true-image-rag.js - CONSOLIDATED: All functionality in one file
+// functions/src/true-image-rag.js - CONSOLIDATED with Hybrid Search
 const functions = require("firebase-functions");
 const admin = require("firebase-admin");
 const OpenAI = require("openai");
+const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 if (admin.apps.length === 0) {
   admin.initializeApp();
@@ -13,7 +14,7 @@ const db = admin.firestore();
 
 // Calculate cosine similarity between two vectors
 const cosineSimilarity = (a, b) => {
-  if (a.length !== b.length) return 0;
+  if (!a || !b || a.length !== b.length) return 0;
   
   let dotProduct = 0;
   let normA = 0;
@@ -30,8 +31,60 @@ const cosineSimilarity = (a, b) => {
   return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 };
 
-// ✅ IMPROVED: Robust JSON parsing for styling advice
-const parseGPTStylingResponse = (rawResponse) => {
+// 🆕 Calculate hybrid similarity with multiple embeddings
+const calculateHybridSimilarity = (queryEmbeddings, itemEmbeddings) => {
+  const similarities = {
+    attribute: 0,
+    text: 0,
+    clip: 0
+  };
+  
+  // Calculate individual similarities
+  if (queryEmbeddings.attributeEmbedding && itemEmbeddings.embedding) {
+    similarities.attribute = cosineSimilarity(queryEmbeddings.attributeEmbedding, itemEmbeddings.embedding);
+  }
+  
+  if (queryEmbeddings.textEmbedding && itemEmbeddings.textEmbedding) {
+    similarities.text = cosineSimilarity(queryEmbeddings.textEmbedding, itemEmbeddings.textEmbedding);
+  }
+  
+  if (queryEmbeddings.clipEmbedding && itemEmbeddings.clipEmbedding) {
+    similarities.clip = cosineSimilarity(queryEmbeddings.clipEmbedding, itemEmbeddings.clipEmbedding);
+  }
+  
+  // Weighted combination based on what's available
+  let weights = { attribute: 0.2, text: 0.4, clip: 0.4 };
+  let totalWeight = 0;
+  let weightedSum = 0;
+  
+  // Adjust weights if some embeddings are missing
+  if (!similarities.clip) {
+    weights = { attribute: 0.3, text: 0.7, clip: 0 };
+  }
+  if (!similarities.text && !similarities.clip) {
+    weights = { attribute: 1, text: 0, clip: 0 };
+  }
+  
+  // Calculate weighted sum
+  Object.keys(similarities).forEach(key => {
+    if (similarities[key] > 0) {
+      weightedSum += similarities[key] * weights[key];
+      totalWeight += weights[key];
+    }
+  });
+  
+  const finalSimilarity = totalWeight > 0 ? weightedSum / totalWeight : 0;
+  
+  console.log(`🔄 Hybrid similarity: attr=${Math.round(similarities.attribute * 100)}%, text=${Math.round(similarities.text * 100)}%, clip=${Math.round(similarities.clip * 100)}%, final=${Math.round(finalSimilarity * 100)}%`);
+  
+  return {
+    overall: finalSimilarity,
+    components: similarities
+  };
+};
+
+// ✅ IMPROVED: Parse Gemini styling response
+const parseGeminiStylingResponse = (rawResponse) => {
   try {
     // Handle case where response is already parsed
     if (Array.isArray(rawResponse)) {
@@ -68,7 +121,7 @@ const parseGPTStylingResponse = (rawResponse) => {
     throw new Error("Response is not an array");
     
   } catch (error) {
-    console.error("❌ Failed to parse GPT styling response:", error);
+    console.error("❌ Failed to parse Gemini styling response:", error);
     console.error("Raw response:", rawResponse);
     
     // Fallback: Create a simple structure from the raw text
@@ -81,7 +134,7 @@ const parseGPTStylingResponse = (rawResponse) => {
   }
 };
 
-// ===== FASHION LOGIC SYSTEM =====
+// ===== FASHION LOGIC SYSTEM (keeping existing logic) =====
 
 // Define garment type hierarchies for proper fashion logic
 const garmentTypes = {
@@ -339,10 +392,16 @@ const isColorSimilar = (color1, color2) => {
   );
 };
 
-// Check if two items are duplicates
-const isDuplicate = (newItemAnalysis, existingItemAnalysis, similarity) => {
+// 🆕 IMPROVED: Check duplicates using hybrid similarity
+const isDuplicate = (newItemAnalysis, existingItemAnalysis, hybridSimilarity) => {
+  // Use overall similarity from hybrid calculation
+  const similarity = hybridSimilarity.overall;
+  
   if (similarity < 0.85) return false;
   if (newItemAnalysis?.category !== existingItemAnalysis?.category) return false;
+  
+  // If CLIP similarity is very high, it's likely a duplicate
+  if (hybridSimilarity.components.clip > 0.92) return true;
   
   if (similarity >= 0.90) return true;
   
@@ -356,248 +415,20 @@ const isDuplicate = (newItemAnalysis, existingItemAnalysis, similarity) => {
 
 // ===== IMAGE ANALYSIS FUNCTIONS =====
 
-// Generate image embedding by using Gemini's analysis (no GPT-4o vision needed)
-const generateImageEmbedding = async (geminiAnalysis, openai) => {
+// 🆕 Generate styling advice using Gemini instead of GPT-4o
+const generateGeminiStylingAdvice = async (itemDescription, wardrobeContext) => {
   try {
-    console.log('🖼️ Generating image embedding from Gemini analysis...');
+    console.log('🤖 Generating styling advice with Gemini...');
     
-    // Create a rich description from Gemini's structured analysis
-    const imageDescription = `${geminiAnalysis.itemName}: A ${geminiAnalysis.style} ${geminiAnalysis.type} made of ${geminiAnalysis.material}. 
-Primary color is ${geminiAnalysis.color.primary}${geminiAnalysis.color.secondary ? ` with ${geminiAnalysis.color.secondary} accents` : ''}. 
-Pattern: ${geminiAnalysis.color.pattern || 'solid'}. 
-Best suited for ${geminiAnalysis.occasion} occasions during ${geminiAnalysis.season} season.
-${geminiAnalysis.confidence.notes ? `Additional details: ${geminiAnalysis.confidence.notes}` : ''}`;
-    
-    console.log('📝 Generated description from Gemini:', imageDescription);
-    
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-large",
-      input: imageDescription,
-      encoding_format: "float"
-    });
-    
-    const imageEmbedding = embeddingResponse.data[0].embedding;
-    console.log(`✅ Generated image embedding: ${imageEmbedding.length} dimensions`);
-    
-    return { embedding: imageEmbedding, description: imageDescription };
-    
-  } catch (error) {
-    console.error('❌ Failed to generate image embedding:', error);
-    throw error;
-  }
-};
-
-// ===== MAIN FUNCTIONS =====
-
-// 🎯 MAIN FUNCTION: Complete Image RAG Analysis
-exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => {
-  res.set("Access-Control-Allow-Origin", "*");
-  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  res.set("Access-Control-Allow-Headers", "Content-Type");
-  
-  if (req.method === 'OPTIONS') {
-    res.status(200).end();
-    return;
-  }
-  
-  try {
-    const { imageUrl, userId, itemAnalysis, compatibleItems } = req.body.data || req.body;
-    
-    console.log('🚀 Starting Complete Image RAG analysis...');
-    console.log('📸 Image URL:', imageUrl);
-    console.log('👤 User ID:', userId);
-    console.log('🔧 Custom compatible items:', compatibleItems ? compatibleItems.length : 'none');
-    
-    if (!imageUrl || !userId) {
-      res.status(400).json({ error: 'imageUrl and userId are required' });
-      return;
+    const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
+    if (!apiKey) {
+      throw new Error('Gemini API key not found');
     }
     
-    // Initialize OpenAI
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY || functions.config().openai?.api_key
-    });
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
     
-    if (!openai.apiKey) {
-      throw new Error('OpenAI API key not found');
-    }
-    
-    // Step 1: Generate detailed description from Gemini analysis
-    console.log('📝 Step 1: Using Gemini analysis for description...');
-    let itemDescription = '';
-    
-    if (itemAnalysis?.analysis) {
-      // Use Gemini's analysis to create description
-      const analysis = itemAnalysis.analysis;
-      itemDescription = `${analysis.itemName}: A ${analysis.style} ${analysis.type} made of ${analysis.material}. 
-Primary color is ${analysis.color.primary}${analysis.color.secondary ? ` with ${analysis.color.secondary} accents` : ''}. 
-Pattern: ${analysis.color.pattern || 'solid'}. 
-Best suited for ${analysis.occasion} occasions during ${analysis.season} season.
-${analysis.confidence.notes ? `Additional details: ${analysis.confidence.notes}` : ''}`;
-    } else {
-      // Fallback - this shouldn't happen if itemAnalysis is provided
-      itemDescription = "A clothing item being analyzed for wardrobe compatibility.";
-    }
-    
-    console.log('📋 Item description:', itemDescription);
-    
-    // Step 2: Search user's wardrobe with fashion logic (if not using custom items)
-    let finalCompatibleItems = [];
-    let duplicateItems = [];
-    let allSimilarItems = [];
-    
-    if (compatibleItems) {
-      // Use provided compatible items (for custom styling)
-      console.log('🎨 Using provided compatible items for custom styling...');
-      finalCompatibleItems = compatibleItems;
-    } else {
-      // Search full wardrobe
-      console.log('🔍 Step 2: Searching wardrobe with fashion logic...');
-      const wardrobeRef = db.collection('users').doc(userId).collection('wardrobe');
-      const wardrobeSnapshot = await wardrobeRef.get();
-      
-      const compatibleItemsFound = [];
-      
-      // Use existing embeddings from itemAnalysis if available, otherwise generate new
-      let queryEmbedding;
-      if (itemAnalysis?.embedding) {
-        queryEmbedding = itemAnalysis.embedding;
-        console.log('📊 Using existing attribute embedding for comparison');
-      } else if (itemAnalysis?.analysis) {
-        // Generate embedding from Gemini analysis
-        const imageResult = await generateImageEmbedding(itemAnalysis.analysis, openai);
-        queryEmbedding = imageResult.embedding;
-        console.log('📊 Generated new image embedding from Gemini analysis');
-      } else {
-        // This shouldn't happen if itemAnalysis is provided
-        throw new Error('No analysis data available for embedding generation');
-      }
-      
-      wardrobeSnapshot.forEach(doc => {
-        const item = { id: doc.id, ...doc.data() };
-        
-        if (!item.embedding || !Array.isArray(item.embedding)) {
-          return;
-        }
-        
-        // Use attribute embeddings for compatibility (more reliable for fashion rules)
-        const itemEmbedding = item.embedding; // 45D attribute embedding
-        const similarity = cosineSimilarity(queryEmbedding, itemEmbedding);
-        
-        console.log(`📊 ${item.tags?.name || 'Item'}: ${Math.round(similarity * 100)}% similarity`);
-        
-        // Check for duplicates
-        if (itemAnalysis?.analysis && item.tags?.aiResults?.analysis) {
-          const isItemDuplicate = isDuplicate(
-            itemAnalysis.analysis,
-            item.tags.aiResults.analysis,
-            similarity
-          );
-          
-          if (isItemDuplicate) {
-            duplicateItems.push({
-              ...item,
-              similarity: Math.round(similarity * 100) / 100,
-              duplicateReason: similarity >= 0.90 ? 'Very high similarity' : 'High similarity + similar color'
-            });
-          }
-        }
-        
-        // Add to similar items if high similarity
-        if (similarity > 0.7) {
-          allSimilarItems.push({
-            ...item,
-            similarity: Math.round(similarity * 100) / 100
-          });
-        }
-        
-        // Check fashion compatibility
-        let canWearTogether = false;
-        if (itemAnalysis?.analysis && item.tags?.aiResults?.analysis) {
-          canWearTogether = areItemsCompatible(
-            itemAnalysis.analysis,
-            item.tags.aiResults.analysis
-          );
-        }
-        
-        // Get formality levels for threshold adjustment
-        const formality1 = itemAnalysis?.analysis ? getFormalityLevel(itemAnalysis.analysis) : 'neutral';
-        const formality2 = item.tags?.aiResults?.analysis ? getFormalityLevel(item.tags.aiResults.analysis) : 'neutral';
-        
-        // Get types for accessory boost logic
-        const type1 = itemAnalysis?.analysis?.type?.toLowerCase() || '';
-        const type2 = item.tags?.aiResults?.analysis?.type?.toLowerCase() || '';
-        
-        // Check if either item is an accessory
-        const isAccessory1 = itemAnalysis?.analysis ? isAccessory(itemAnalysis.analysis) : false;
-        const isAccessory2 = item.tags?.aiResults?.analysis ? isAccessory(item.tags.aiResults.analysis) : false;
-        
-        // Add to compatible items if passes fashion logic
-        // LOWERED threshold for formal items and accessories
-        let similarityThreshold = 0.3;
-        if ((formality1 === 'formal' && formality2 === 'formal')) {
-          similarityThreshold = 0.1;
-        } else if (isAccessory1 || isAccessory2) {
-          // Accessories need even lower threshold as they work with many items
-          similarityThreshold = 0.05;
-        }
-        
-        // Boost similarity for fashion-rule based matches
-        let adjustedSimilarity = similarity;
-        if (canWearTogether) {
-          // Belt with pants/formal items gets a boost
-          if ((type1.includes('belt') && (type2.includes('pants') || formality2 === 'formal')) ||
-              (type2.includes('belt') && (type1.includes('pants') || formality1 === 'formal'))) {
-            adjustedSimilarity = Math.min(similarity + 0.5, 0.95); // Major boost for belt+pants
-            console.log(`🎯 Belt+Pants boost: ${Math.round(similarity * 100)}% → ${Math.round(adjustedSimilarity * 100)}%`);
-          }
-          // Other accessories get smaller boost
-          else if (isAccessory1 || isAccessory2) {
-            adjustedSimilarity = Math.min(similarity + 0.3, 0.9);
-          }
-        }
-        
-        if (canWearTogether && adjustedSimilarity > similarityThreshold) {
-          compatibleItemsFound.push({
-            ...item,
-            similarity: Math.round(adjustedSimilarity * 100) / 100,
-            compatibilityReason: 'Passes fashion logic + similarity'
-          });
-        } else if (canWearTogether && similarity > 0.01) {
-          // Still add items that pass fashion logic even with very low similarity
-          console.log(`📊 Item passes fashion logic but low similarity: ${item.tags?.name} (${Math.round(similarity * 100)}%)`);
-          compatibleItemsFound.push({
-            ...item,
-            similarity: Math.round(adjustedSimilarity * 100) / 100,
-            compatibilityReason: 'Fashion compatible (low similarity)'
-          });
-        }
-      });
-      
-      // Sort by similarity
-      compatibleItemsFound.sort((a, b) => b.similarity - a.similarity);
-      duplicateItems.sort((a, b) => b.similarity - a.similarity);
-      allSimilarItems.sort((a, b) => b.similarity - a.similarity);
-      
-      finalCompatibleItems = compatibleItemsFound;
-      console.log(`📊 Found: ${finalCompatibleItems.length} compatible, ${duplicateItems.length} duplicates`);
-    }
-    
-    // Step 3: Generate styling advice if there are compatible items
-    let stylingAdvice = '';
-    if (finalCompatibleItems.length > 0) {
-      console.log('🤖 Step 3: Generating AI styling advice...');
-      
-      const topItems = finalCompatibleItems.slice(0, 8);
-      const wardrobeContext = topItems.map(item => {
-        const name = item.tags?.name || item.name || 'Item';
-        const analysis = item.tags?.aiResults?.analysis;
-        const similarity = `${Math.round(item.similarity * 100)}% match`;
-        return `- ${name} (${similarity}${analysis ? `, ${analysis.style} style, ${analysis.color?.primary}` : ''})`;
-      }).join('\n');
-      
-      // ✅ IMPROVED: Better GPT-4o prompt with clearer instructions
-      const stylingPrompt = `You are a professional fashion stylist. A user is considering buying this item: "${itemDescription}"
+    const stylingPrompt = `You are a professional fashion stylist. A user is considering buying this item: "${itemDescription}"
 
 Their wardrobe contains these compatible pieces:
 ${wardrobeContext}
@@ -623,15 +454,223 @@ Rules:
 - Be specific about occasions and styling tips
 - Keep descriptions concise but helpful`;
 
-      const stylingResponse = await openai.chat.completions.create({
-        model: "gpt-4o",
-        messages: [{ role: "user", content: stylingPrompt }],
-        max_tokens: 600, // ✅ INCREASED: More tokens to prevent truncation
-        temperature: 0.7
+    const result = await model.generateContent(stylingPrompt);
+    const response = await result.response;
+    const text = response.text();
+    
+    console.log('🤖 Gemini styling response:', text);
+    
+    return text;
+    
+  } catch (error) {
+    console.error('❌ Failed to generate Gemini styling advice:', error);
+    throw error;
+  }
+};
+
+// ===== MAIN FUNCTIONS =====
+
+// 🎯 MAIN FUNCTION: Complete Image RAG Analysis with Hybrid Search
+exports.analyzeWithTrueImageRAG = functions.https.onRequest(async (req, res) => {
+  res.set("Access-Control-Allow-Origin", "*");
+  res.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.set("Access-Control-Allow-Headers", "Content-Type");
+  
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
+  
+  try {
+    const { imageUrl, userId, itemAnalysis, compatibleItems } = req.body.data || req.body;
+    
+    console.log('🚀 Starting Complete Image RAG analysis with hybrid search...');
+    console.log('📸 Image URL:', imageUrl);
+    console.log('👤 User ID:', userId);
+    console.log('🔧 Custom compatible items:', compatibleItems ? compatibleItems.length : 'none');
+    
+    if (!imageUrl || !userId) {
+      res.status(400).json({ error: 'imageUrl and userId are required' });
+      return;
+    }
+    
+    // Step 1: Prepare embeddings from analysis
+    console.log('📝 Step 1: Preparing embeddings for hybrid search...');
+    let queryEmbeddings = {
+      attributeEmbedding: itemAnalysis?.embedding || null,
+      textEmbedding: itemAnalysis?.textEmbedding || itemAnalysis?.trueImageEmbedding || null,
+      clipEmbedding: itemAnalysis?.clipEmbedding || null
+    };
+    
+    // Generate item description
+    let itemDescription = '';
+    if (itemAnalysis?.analysis) {
+      const analysis = itemAnalysis.analysis;
+      itemDescription = `${analysis.itemName}: A ${analysis.style} ${analysis.type} made of ${analysis.material}. 
+Primary color is ${analysis.color.primary}${analysis.color.secondary ? ` with ${analysis.color.secondary} accents` : ''}. 
+Pattern: ${analysis.color.pattern || 'solid'}. 
+Best suited for ${analysis.occasion} occasions during ${analysis.season} season.
+${analysis.confidence.notes ? `Additional details: ${analysis.confidence.notes}` : ''}`;
+    }
+    
+    console.log('📋 Item description:', itemDescription);
+    console.log('🔍 Available embeddings:', {
+      hasAttribute: !!queryEmbeddings.attributeEmbedding,
+      hasText: !!queryEmbeddings.textEmbedding,
+      hasClip: !!queryEmbeddings.clipEmbedding
+    });
+    
+    // Step 2: Search user's wardrobe with hybrid similarity
+    let finalCompatibleItems = [];
+    let duplicateItems = [];
+    let allSimilarItems = [];
+    
+    if (compatibleItems) {
+      // Use provided compatible items (for custom styling)
+      console.log('🎨 Using provided compatible items for custom styling...');
+      finalCompatibleItems = compatibleItems;
+    } else {
+      // Search full wardrobe with hybrid approach
+      console.log('🔍 Step 2: Searching wardrobe with hybrid similarity...');
+      const wardrobeRef = db.collection('users').doc(userId).collection('wardrobe');
+      const wardrobeSnapshot = await wardrobeRef.get();
+      
+      const compatibleItemsFound = [];
+      
+      wardrobeSnapshot.forEach(doc => {
+        const item = { id: doc.id, ...doc.data() };
+        
+        // Prepare item embeddings
+        const itemEmbeddings = {
+          embedding: item.embedding || null,
+          textEmbedding: item.textEmbedding || item.trueImageEmbedding || null,
+          clipEmbedding: item.clipEmbedding || null
+        };
+        
+        // Skip if no embeddings
+        if (!itemEmbeddings.embedding && !itemEmbeddings.textEmbedding && !itemEmbeddings.clipEmbedding) {
+          return;
+        }
+        
+        // 🆕 Calculate hybrid similarity
+        const hybridSimilarity = calculateHybridSimilarity(queryEmbeddings, itemEmbeddings);
+        
+        console.log(`📊 ${item.tags?.name || 'Item'}: ${Math.round(hybridSimilarity.overall * 100)}% hybrid similarity`);
+        
+        // Check for duplicates using hybrid similarity
+        if (itemAnalysis?.analysis && item.tags?.aiResults?.analysis) {
+          const isItemDuplicate = isDuplicate(
+            itemAnalysis.analysis,
+            item.tags.aiResults.analysis,
+            hybridSimilarity
+          );
+          
+          if (isItemDuplicate) {
+            duplicateItems.push({
+              ...item,
+              similarity: Math.round(hybridSimilarity.overall * 100) / 100,
+              duplicateReason: hybridSimilarity.components.clip > 0.92 ? 
+                'Visual duplicate detected' : 
+                (hybridSimilarity.overall >= 0.90 ? 'Very high similarity' : 'High similarity + similar color')
+            });
+          }
+        }
+        
+        // Add to similar items if high similarity
+        if (hybridSimilarity.overall > 0.7) {
+          allSimilarItems.push({
+            ...item,
+            similarity: Math.round(hybridSimilarity.overall * 100) / 100,
+            similarityComponents: hybridSimilarity.components
+          });
+        }
+        
+        // Check fashion compatibility
+        let canWearTogether = false;
+        if (itemAnalysis?.analysis && item.tags?.aiResults?.analysis) {
+          canWearTogether = areItemsCompatible(
+            itemAnalysis.analysis,
+            item.tags.aiResults.analysis
+          );
+        }
+        
+        // Get formality levels for threshold adjustment
+        const formality1 = itemAnalysis?.analysis ? getFormalityLevel(itemAnalysis.analysis) : 'neutral';
+        const formality2 = item.tags?.aiResults?.analysis ? getFormalityLevel(item.tags.aiResults.analysis) : 'neutral';
+        
+        // Get types for accessory boost logic
+        const type1 = itemAnalysis?.analysis?.type?.toLowerCase() || '';
+        const type2 = item.tags?.aiResults?.analysis?.type?.toLowerCase() || '';
+        
+        // Check if either item is an accessory
+        const isAccessory1 = itemAnalysis?.analysis ? isAccessory(itemAnalysis.analysis) : false;
+        const isAccessory2 = item.tags?.aiResults?.analysis ? isAccessory(item.tags.aiResults.analysis) : false;
+        
+        // Add to compatible items if passes fashion logic
+        let similarityThreshold = 0.3;
+        if ((formality1 === 'formal' && formality2 === 'formal')) {
+          similarityThreshold = 0.1;
+        } else if (isAccessory1 || isAccessory2) {
+          similarityThreshold = 0.05;
+        }
+        
+        // Boost similarity for fashion-rule based matches
+        let adjustedSimilarity = hybridSimilarity.overall;
+        if (canWearTogether) {
+          // Belt with pants/formal items gets a boost
+          if ((type1.includes('belt') && (type2.includes('pants') || formality2 === 'formal')) ||
+              (type2.includes('belt') && (type1.includes('pants') || formality1 === 'formal'))) {
+            adjustedSimilarity = Math.min(hybridSimilarity.overall + 0.5, 0.95);
+            console.log(`🎯 Belt+Pants boost: ${Math.round(hybridSimilarity.overall * 100)}% → ${Math.round(adjustedSimilarity * 100)}%`);
+          }
+          // Other accessories get smaller boost
+          else if (isAccessory1 || isAccessory2) {
+            adjustedSimilarity = Math.min(hybridSimilarity.overall + 0.3, 0.9);
+          }
+        }
+        
+        if (canWearTogether && adjustedSimilarity > similarityThreshold) {
+          compatibleItemsFound.push({
+            ...item,
+            similarity: Math.round(adjustedSimilarity * 100) / 100,
+            compatibilityReason: 'Passes fashion logic + similarity',
+            embeddingType: hybridSimilarity.components.clip ? 'hybrid' : 'text-only'
+          });
+        } else if (canWearTogether && hybridSimilarity.overall > 0.01) {
+          compatibleItemsFound.push({
+            ...item,
+            similarity: Math.round(adjustedSimilarity * 100) / 100,
+            compatibilityReason: 'Fashion compatible (low similarity)',
+            embeddingType: hybridSimilarity.components.clip ? 'hybrid' : 'text-only'
+          });
+        }
       });
       
-      stylingAdvice = stylingResponse.choices[0].message.content;
-      console.log('🤖 Raw GPT-4o styling response:', stylingAdvice);
+      // Sort by similarity
+      compatibleItemsFound.sort((a, b) => b.similarity - a.similarity);
+      duplicateItems.sort((a, b) => b.similarity - a.similarity);
+      allSimilarItems.sort((a, b) => b.similarity - a.similarity);
+      
+      finalCompatibleItems = compatibleItemsFound;
+      console.log(`📊 Found: ${finalCompatibleItems.length} compatible, ${duplicateItems.length} duplicates`);
+    }
+    
+    // Step 3: Generate styling advice using Gemini
+    let stylingAdvice = '';
+    if (finalCompatibleItems.length > 0) {
+      console.log('🤖 Step 3: Generating AI styling advice with Gemini...');
+      
+      const topItems = finalCompatibleItems.slice(0, 8);
+      const wardrobeContext = topItems.map(item => {
+        const name = item.tags?.name || item.name || 'Item';
+        const analysis = item.tags?.aiResults?.analysis;
+        const similarity = `${Math.round(item.similarity * 100)}% match`;
+        return `- ${name} (${similarity}${analysis ? `, ${analysis.style} style, ${analysis.color?.primary}` : ''})`;
+      }).join('\n');
+      
+      // 🆕 Use Gemini instead of GPT-4o
+      stylingAdvice = await generateGeminiStylingAdvice(itemDescription, wardrobeContext);
+      
     } else {
       stylingAdvice = JSON.stringify([{
         title: "Build Around This Piece",
@@ -641,10 +680,10 @@ Rules:
       }]);
     }
     
-    // ✅ IMPROVED: Parse styling advice with robust error handling
-    const parsedStylingAdvice = parseGPTStylingResponse(stylingAdvice);
+    // Parse styling advice with error handling
+    const parsedStylingAdvice = parseGeminiStylingResponse(stylingAdvice);
     
-    // Generate recommendations (only for full wardrobe analysis, not custom styling)
+    // Generate recommendations
     let recommendation = '';
     if (!compatibleItems) {
       const isDressItem = isCompleteOutfit(itemAnalysis?.analysis);
@@ -679,14 +718,14 @@ Rules:
       recommendation = '🎨 Custom styling based on your selected wardrobe items.';
     }
     
-    console.log('✅ Complete Image RAG analysis finished!');
+    console.log('✅ Complete Image RAG analysis with hybrid search finished!');
     
     res.json({
       success: true,
       result: {
         // Image RAG results
         itemDescription: itemDescription,
-        stylingAdvice: parsedStylingAdvice, // ✅ Now properly parsed
+        stylingAdvice: parsedStylingAdvice,
         
         // Compatibility results  
         compatibleItems: finalCompatibleItems.slice(0, 10).map(item => ({
@@ -694,10 +733,10 @@ Rules:
           name: item.tags?.name || item.name || 'Wardrobe Item',
           imageUrl: item.imageUrl,
           similarity: item.similarity,
-          embeddingType: 'fashion-logic-compatible'
+          embeddingType: item.embeddingType || 'unknown'
         })),
         
-        // Duplicate detection (only for full analysis)
+        // Duplicate detection
         duplicateItems: duplicateItems.slice(0, 3),
         duplicateWarning: duplicateItems.length > 0 ? 
           `⚠️ **Duplicate Alert!** You already have ${duplicateItems.length} similar item${duplicateItems.length > 1 ? 's' : ''} in your wardrobe.` : null,
@@ -710,18 +749,23 @@ Rules:
         
         metadata: {
           processedAt: new Date().toISOString(),
-          ragType: 'complete-image-rag',
-          version: 'v3.1-improved-parsing', // ✅ Updated version
+          ragType: 'hybrid-image-rag',
+          version: 'v4.0-hybrid-gemini',
           wardrobeSize: compatibleItems ? 'custom' : 'full-analysis',
           fashionLogicEnabled: true,
           duplicatesFound: duplicateItems.length,
-          customStyling: !!compatibleItems
+          customStyling: !!compatibleItems,
+          embeddingTypes: {
+            hasClip: !!queryEmbeddings.clipEmbedding,
+            hasText: !!queryEmbeddings.textEmbedding,
+            hasAttribute: !!queryEmbeddings.attributeEmbedding
+          }
         }
       }
     });
     
   } catch (error) {
-    console.error('❌ Error in Complete Image RAG:', error);
+    console.error('❌ Error in Hybrid Image RAG:', error);
     res.status(500).json({
       success: false,
       error: error.message
@@ -751,8 +795,8 @@ exports.upgradeWardrobeToImageEmbeddings = functions.https.onRequest(async (req,
     res.json({
       success: true,
       result: {
-        message: "Upgrade not needed - using consolidated Image RAG system",
-        approach: "complete-image-rag-v3.1-improved-parsing"
+        message: "Upgrade not needed - using hybrid Image RAG system",
+        approach: "hybrid-image-rag-v4.0-gemini"
       }
     });
     

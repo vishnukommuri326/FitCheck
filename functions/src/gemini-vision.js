@@ -8,6 +8,16 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 }
 
+// Initialize Gemini
+const initializeGemini = () => {
+  const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
+  if (!apiKey) {
+    throw new Error('Gemini API key not found');
+  }
+  const genAI = new GoogleGenerativeAI(apiKey);
+  return genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+};
+
 // Enhanced embedding generation function (KEEP EXISTING)
 const generateEmbedding = (analysis) => {
   const embedding = [];
@@ -140,46 +150,105 @@ const generateEmbedding = (analysis) => {
   return embedding;
 };
 
-// OPTIMIZED: Generate embedding from Gemini analysis (no GPT-4o vision needed)
-const generateTrueImageEmbedding = async (geminiAnalysis) => {
+// 🆕 Generate CLIP embedding using Hugging Face Inference API
+const generateCLIPEmbedding = async (imageUrl) => {
   try {
-    console.log('🖼️ Generating embedding from Gemini analysis...');
+    console.log('🖼️ Generating CLIP embedding...');
     
-    const openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY
-    });
-    
-    if (!openai.apiKey) {
-      console.warn('⚠️ OpenAI API key not found, skipping image embedding');
+    const HF_TOKEN = process.env.HUGGINGFACE_API_KEY || functions.config().huggingface?.api_key;
+    if (!HF_TOKEN) {
+      console.warn('⚠️ Hugging Face API key not found, skipping CLIP embedding');
       return null;
     }
     
-    // Create a rich description from Gemini's structured analysis
+    // Fetch image and convert to base64
+    const imageResponse = await fetch(imageUrl);
+    const imageBuffer = await imageResponse.arrayBuffer();
+    const base64Image = Buffer.from(imageBuffer).toString('base64');
+    
+    // Use Hugging Face's CLIP model
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/sentence-transformers/clip-ViT-B-32",
+      {
+        headers: {
+          Authorization: `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+        method: "POST",
+        body: JSON.stringify({
+          inputs: {
+            image: base64Image
+          },
+        }),
+      }
+    );
+    
+    if (!response.ok) {
+      console.error(`❌ HF API error:  ${response.status} - ${response.statusText}`);
+      const errorBody = await response.text();
+      console.error('❌ HF API error details:' , errorBody);
+      throw new Error(`HF API error: ${response.status} - ${response.statusText}`); 
+    }
+    
+    const result = await response.json();
+    console.log(`✅ Generated CLIP embedding: ${result.length}D`);
+    console.log('CLIP embedding raw result:', result);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Failed to generate CLIP embedding:', error);
+    console.error('❌ CLIP embedding error stack:' , error.stack);
+    console.error('❌ CLIP embedding error object:' , error); 
+    return null;
+  }
+};
+
+// 🆕 HYBRID: Generate both text and CLIP embeddings
+const generateHybridEmbeddings = async (geminiAnalysis, imageUrl) => {
+  try {
+    console.log('🔄 Generating hybrid embeddings...');
+    
+    const openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY || functions.config().openai?.api_key
+    });
+    
+    if (!openai.apiKey) {
+      console.warn('⚠️ OpenAI API key not found, skipping text embedding');
+      return null;
+    }
+    
+    // 1. Create rich description from Gemini's analysis
     const description = `${geminiAnalysis.itemName}: A ${geminiAnalysis.style} ${geminiAnalysis.type} made of ${geminiAnalysis.material}. 
 Primary color is ${geminiAnalysis.color.primary}${geminiAnalysis.color.secondary ? ` with ${geminiAnalysis.color.secondary} accents` : ''}. 
 Pattern: ${geminiAnalysis.color.pattern || 'solid'}. 
 Best suited for ${geminiAnalysis.occasion} occasions during ${geminiAnalysis.season} season.
 ${geminiAnalysis.confidence.notes ? `Additional details: ${geminiAnalysis.confidence.notes}` : ''}`;
     
-    console.log('📝 Generated description from Gemini:', description);
+    console.log('📝 Generated description:', description);
     
-    // Generate text embedding from description (using OpenAI's embeddings, not vision)
+    // 2. Generate text embedding
     const embeddingResponse = await openai.embeddings.create({
       model: "text-embedding-3-large",
       input: description,
       encoding_format: "float"
     });
     
-    const imageEmbedding = embeddingResponse.data[0].embedding;
-    console.log(`✅ Generated embedding: ${imageEmbedding.length} dimensions`);
+    const textEmbedding = embeddingResponse.data[0].embedding;
+    console.log(`✅ Text embedding: ${textEmbedding.length}D`);
+    
+    // 3. Generate CLIP embedding (parallel with text)
+    const clipEmbedding = await generateCLIPEmbedding(imageUrl);
     
     return {
-      embedding: imageEmbedding,
-      description: description
+      textEmbedding: textEmbedding,
+      clipEmbedding: clipEmbedding,
+      description: description,
+      embeddingType: clipEmbedding ? 'hybrid-v3' : 'text-only-v2'
     };
     
   } catch (error) {
-    console.error('❌ Failed to generate embedding:', error);
+    console.error('❌ Failed to generate hybrid embeddings:', error);
     return null;
   }
 };
@@ -210,7 +279,7 @@ exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
     }
     
     // Initialize Gemini with your API key
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
     
     if (!apiKey) {
       throw new Error('Gemini API key not found. Set GEMINI_API_KEY in .env or Firebase config.');
@@ -320,9 +389,9 @@ Respond with ONLY a JSON object in this exact format:
     console.log('🧮 Generating attribute embedding vector...');
     const attributeEmbedding = generateEmbedding(analysis);
     
-    // OPTIMIZED: Generate embedding from Gemini analysis (no GPT-4o vision needed)
-    console.log('🖼️ Generating image embedding from Gemini analysis...');
-    const trueImageResult = await generateTrueImageEmbedding(analysis);
+    // 🆕 HYBRID: Generate both text and CLIP embeddings
+    console.log('🔄 Generating hybrid embeddings...');
+    const hybridResult = await generateHybridEmbeddings(analysis, imageUrl);
     
     // Build the response
     const finalResponse = {
@@ -330,25 +399,34 @@ Respond with ONLY a JSON object in this exact format:
       source: 'gemini-vision',
       analysis: analysis,
       embedding: attributeEmbedding, // Keep for backward compatibility
-      trueImageEmbedding: trueImageResult?.embedding || null,
-      imageDescription: trueImageResult?.description || null,
+      
+      // 🆕 Hybrid embeddings
+      textEmbedding: hybridResult?.textEmbedding || null,
+      clipEmbedding: hybridResult?.clipEmbedding || null,
+      imageDescription: hybridResult?.description || null,
+      
+      // Legacy field for backward compatibility
+      trueImageEmbedding: hybridResult?.textEmbedding || null,
+      
       metadata: {
         processedAt: new Date().toISOString(),
         userId: userId || 'anonymous',
         imageUrl: imageUrl,
         model: 'gemini-2.0-flash-exp',
-        embeddingVersion: 'v2-optimized', // Updated version
+        embeddingVersion: hybridResult?.embeddingType || 'v1',
         attributeEmbeddingDimensions: attributeEmbedding.length,
-        trueImageEmbeddingDimensions: trueImageResult?.embedding?.length || 0
+        textEmbeddingDimensions: hybridResult?.textEmbedding?.length || 0,
+        clipEmbeddingDimensions: hybridResult?.clipEmbedding?.length || 0
       }
     };
     
-    console.log('✅ Sending response with optimized embeddings:', {
+    console.log('✅ Sending response with hybrid embeddings:', {
       analysis: analysis.itemName,
       attributeEmbeddingLength: attributeEmbedding.length,
-      imageEmbeddingLength: trueImageResult?.embedding?.length || 0,
-      hasDescription: !!trueImageResult?.description,
-      singleModelApproach: true
+      textEmbeddingLength: hybridResult?.textEmbedding?.length || 0,
+      clipEmbeddingLength: hybridResult?.clipEmbedding?.length || 0,
+      hasDescription: !!hybridResult?.description,
+      embeddingType: hybridResult?.embeddingType || 'none'
     });
     
     res.json(finalResponse);

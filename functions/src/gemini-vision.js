@@ -23,31 +23,21 @@ const generateEmbedding = (analysis) => {
   const embedding = [];
   
   // === COLOR ENCODING (0-12) ===
-  // More comprehensive color mapping with better RGB values
   const colorMap = {
-    // Primary colors
     'red': [1, 0, 0], 'blue': [0, 0, 1], 'green': [0, 1, 0],
-    // Neutrals
     'black': [0, 0, 0], 'white': [1, 1, 1], 'gray': [0.5, 0.5, 0.5], 'grey': [0.5, 0.5, 0.5],
-    // Blues
     'navy': [0, 0, 0.5], 'royal': [0, 0, 0.8], 'teal': [0, 0.5, 0.5], 'turquoise': [0, 0.8, 0.8],
-    // Reds
     'burgundy': [0.5, 0, 0.1], 'maroon': [0.5, 0, 0], 'crimson': [0.9, 0.1, 0.2], 'pink': [1, 0.7, 0.8],
-    // Greens
     'forest': [0, 0.5, 0], 'olive': [0.5, 0.5, 0], 'lime': [0.5, 1, 0], 'mint': [0.6, 1, 0.6],
-    // Earth tones
     'brown': [0.6, 0.3, 0.1], 'tan': [0.8, 0.7, 0.5], 'beige': [0.9, 0.9, 0.7], 'cream': [1, 0.9, 0.8],
-    // Jewel tones
     'purple': [0.5, 0, 0.5], 'violet': [0.9, 0.5, 0.9], 'indigo': [0.3, 0, 0.5],
-    // Bright colors
     'yellow': [1, 1, 0], 'orange': [1, 0.5, 0], 'coral': [1, 0.5, 0.3], 'magenta': [1, 0, 1],
-    // Metallics
     'gold': [1, 0.8, 0], 'silver': [0.7, 0.7, 0.7], 'bronze': [0.8, 0.5, 0.2]
   };
   
-  // Smart color matching - check if color name contains any known colors
+  // Smart color matching
   const primaryColor = analysis.color.primary.toLowerCase();
-  let matchedColor = 'gray'; // default
+  let matchedColor = 'gray';
   let maxMatch = 0;
   
   Object.keys(colorMap).forEach(color => {
@@ -59,7 +49,7 @@ const generateEmbedding = (analysis) => {
   
   embedding.push(...colorMap[matchedColor]);
   
-  // Secondary color (if exists)
+  // Secondary color
   if (analysis.color.secondary) {
     const secondaryColor = analysis.color.secondary.toLowerCase();
     let secondaryMatch = 'gray';
@@ -74,7 +64,7 @@ const generateEmbedding = (analysis) => {
     
     embedding.push(...colorMap[secondaryMatch]);
   } else {
-    embedding.push(0, 0, 0); // No secondary color
+    embedding.push(0, 0, 0);
   }
   
   // === CATEGORY ENCODING (6-11) ===
@@ -100,7 +90,6 @@ const generateEmbedding = (analysis) => {
   // === PATTERN ENCODING (29-33) ===
   const patterns = ['solid', 'striped', 'floral', 'plaid', 'other'];
   const pattern = analysis.color.pattern || 'solid';
-  // Handle 'other pattern' case
   const normalizedPattern = patterns.includes(pattern) ? pattern : 'other';
   const patternVector = patterns.map(p => p === normalizedPattern ? 1 : 0);
   embedding.push(...patternVector);
@@ -111,8 +100,7 @@ const generateEmbedding = (analysis) => {
   embedding.push(...occasionVector);
   
   // === COMPUTED FEATURES (40-44) ===
-  
-  // Formality score (0-1)
+  // Formality score
   const formalityScore = analysis.style === 'formal' ? 1 : 
                         analysis.style === 'business' ? 0.8 : 
                         analysis.style === 'evening' ? 0.9 :
@@ -120,21 +108,21 @@ const generateEmbedding = (analysis) => {
                         analysis.style === 'athletic' ? 0.1 : 0.5;
   embedding.push(formalityScore);
   
-  // Versatility score (how many occasions/seasons it works for)
+  // Versatility score
   let versatilityScore = 0;
   if (analysis.season === 'all-season') versatilityScore += 0.4;
   if (analysis.occasion === 'everyday') versatilityScore += 0.3;
   if (analysis.occasion === 'casual') versatilityScore += 0.2;
   if (analysis.style === 'casual') versatilityScore += 0.1;
-  versatilityScore = Math.min(versatilityScore, 1); // Cap at 1
+  versatilityScore = Math.min(versatilityScore, 1);
   embedding.push(versatilityScore);
   
-  // Color brightness (0-1) - based on RGB values
+  // Color brightness
   const colorRGB = colorMap[matchedColor];
   const brightness = (colorRGB[0] + colorRGB[1] + colorRGB[2]) / 3;
   embedding.push(brightness);
   
-  // Pattern complexity (0-1)
+  // Pattern complexity
   const patternComplexity = pattern === 'solid' ? 0 :
                            pattern === 'striped' ? 0.3 :
                            pattern === 'plaid' ? 0.7 :
@@ -144,62 +132,106 @@ const generateEmbedding = (analysis) => {
   // Confidence score
   embedding.push(analysis.confidence.overall || 0.5);
   
-  console.log(`🧮 Generated attribute embedding vector (${embedding.length} dimensions):`, 
-    embedding.map(v => Math.round(v * 100) / 100));
+  console.log(`🧮 Generated attribute embedding vector (${embedding.length} dimensions)`);
   
   return embedding;
 };
 
-// 🆕 Generate CLIP embedding using Hugging Face Inference API
+// 🆕 NEW: Generate CLIP embedding using Replicate
 const generateCLIPEmbedding = async (imageUrl) => {
   try {
-    console.log('🖼️ Generating CLIP embedding...');
+    console.log('🖼️ Generating CLIP embedding via Replicate...');
     
-    const HF_TOKEN = process.env.HUGGINGFACE_API_KEY || functions.config().huggingface?.api_key;
-    if (!HF_TOKEN) {
-      console.warn('⚠️ Hugging Face API key not found, skipping CLIP embedding');
+    const REPLICATE_TOKEN = process.env.REPLICATE_API_TOKEN || functions.config().replicate?.api_token;
+    if (!REPLICATE_TOKEN) {
+      console.warn('⚠️ Replicate API token not found, skipping CLIP embedding');
       return null;
     }
     
-    // Fetch image and convert to base64
-    const imageResponse = await fetch(imageUrl);
-    const imageBuffer = await imageResponse.arrayBuffer();
-    const base64Image = Buffer.from(imageBuffer).toString('base64');
-    
-    // Use Hugging Face's CLIP model
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/sentence-transformers/clip-ViT-B-32",
-      {
-        headers: {
-          Authorization: `Bearer ${HF_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-        method: "POST",
-        body: JSON.stringify({
-          inputs: {
-            image: base64Image
-          },
-        }),
-      }
-    );
+    // Create prediction with CLIP model
+    const response = await fetch('https://api.replicate.com/v1/predictions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Token ${REPLICATE_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        // CLIP ViT-L/14 model that outputs 768D embeddings
+        version: "1c0371070cb827ec3c7f2f28adcdde54b50dcd239aa6faea0bc98b174ef03fb4",
+        input: {
+          image: imageUrl, // Pass URL directly
+        }
+      })
+    });
     
     if (!response.ok) {
-      console.error(`❌ HF API error:  ${response.status} - ${response.statusText}`);
-      const errorBody = await response.text();
-      console.error('❌ HF API error details:' , errorBody);
-      throw new Error(`HF API error: ${response.status} - ${response.statusText}`); 
+      const errorData = await response.text();
+      console.error('❌ Replicate API error:', errorData);
+      throw new Error(`Replicate API error: ${response.status}`);
     }
     
-    const result = await response.json();
-    console.log(`✅ Generated CLIP embedding: ${result.length}D`);
-    console.log('CLIP embedding raw result:', result);
+    const prediction = await response.json();
+    console.log('⏳ Prediction created:', prediction.id);
     
-    return result;
+    // Poll for results
+    let result = null;
+    let attempts = 0;
+    const maxAttempts = 30; // 30 seconds timeout
+    
+    while (!result && attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      
+      const resultResponse = await fetch(
+        `https://api.replicate.com/v1/predictions/${prediction.id}`,
+        {
+          headers: {
+            'Authorization': `Token ${REPLICATE_TOKEN}`,
+          }
+        }
+      );
+      
+      if (!resultResponse.ok) {
+        throw new Error(`Failed to get prediction status: ${resultResponse.status}`);
+      }
+      
+      const status = await resultResponse.json();
+      
+      if (status.status === 'succeeded') {
+        result = status.output;
+        break;
+      } else if (status.status === 'failed') {
+        console.error('❌ Prediction failed:', status.error);
+        throw new Error(`CLIP embedding generation failed: ${status.error}`);
+      }
+      
+      attempts++;
+      if (attempts % 5 === 0) {
+        console.log(`⏳ Still processing... (${attempts}s)`);
+      }
+    }
+    
+    if (!result) {
+      throw new Error('Timeout waiting for CLIP embedding');
+    }
+    
+    // Extract embedding from result
+    let embedding;
+    if (Array.isArray(result)) {
+      embedding = result;
+    } else if (result.embedding) {
+      embedding = result.embedding;
+    } else if (result.image_embedding) {
+      embedding = result.image_embedding;
+    } else {
+      console.error('❌ Unexpected result format:', result);
+      throw new Error('Unexpected CLIP result format');
+    }
+    
+    console.log(`✅ Generated CLIP embedding: ${embedding.length}D`);
+    return embedding;
     
   } catch (error) {
-    console.error('❌ Failed to generate CLIP embedding:', error);
-    console.error('❌ CLIP embedding error stack:' , error.stack);
-    console.error('❌ CLIP embedding error object:' , error); 
+    console.error('❌ Failed to generate CLIP embedding:', error.message);
     return null;
   }
 };
@@ -227,18 +259,18 @@ ${geminiAnalysis.confidence.notes ? `Additional details: ${geminiAnalysis.confid
     
     console.log('📝 Generated description:', description);
     
-    // 2. Generate text embedding
-    const embeddingResponse = await openai.embeddings.create({
-      model: "text-embedding-3-large",
-      input: description,
-      encoding_format: "float"
-    });
+    // 2. Generate text embedding (parallel with CLIP)
+    const [textEmbeddingResponse, clipEmbedding] = await Promise.all([
+      openai.embeddings.create({
+        model: "text-embedding-3-large",
+        input: description,
+        encoding_format: "float"
+      }),
+      generateCLIPEmbedding(imageUrl) // 3. Generate CLIP embedding
+    ]);
     
-    const textEmbedding = embeddingResponse.data[0].embedding;
+    const textEmbedding = textEmbeddingResponse.data[0].embedding;
     console.log(`✅ Text embedding: ${textEmbedding.length}D`);
-    
-    // 3. Generate CLIP embedding (parallel with text)
-    const clipEmbedding = await generateCLIPEmbedding(imageUrl);
     
     return {
       textEmbedding: textEmbedding,
@@ -278,7 +310,7 @@ exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
       return;
     }
     
-    // Initialize Gemini with your API key
+    // Initialize Gemini
     const apiKey = process.env.GEMINI_API_KEY || functions.config().gemini?.api_key;
     
     if (!apiKey) {
@@ -287,7 +319,7 @@ exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
     
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({ 
-      model: "gemini-2.0-flash-exp" // Fastest model - 8B parameter version
+      model: "gemini-2.0-flash-exp"
     });
     
     // Fetch the image from URL
@@ -303,7 +335,7 @@ exports.analyzeClothingItem = functions.https.onRequest(async (req, res) => {
     
     console.log('🖼️ Image fetched and converted to base64');
     
-    // Enhanced prompt to get richer descriptions
+    // Enhanced prompt
     const prompt = `You are an expert fashion analyst specializing in clothing identification and color analysis.
 
 Analyze this clothing item and provide a JSON response. Follow these rules:
@@ -354,7 +386,6 @@ Respond with ONLY a JSON object in this exact format:
     // Parse JSON from response
     let analysis;
     try {
-      // Extract JSON from the response (in case there's extra text)
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         analysis = JSON.parse(jsonMatch[0]);
@@ -363,7 +394,7 @@ Respond with ONLY a JSON object in this exact format:
       }
     } catch (parseError) {
       console.error('❌ Failed to parse Gemini response:', parseError);
-      // Fallback analysis if parsing fails
+      // Fallback analysis
       analysis = {
         itemName: "Clothing Item",
         category: "Other",

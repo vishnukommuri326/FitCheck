@@ -83,7 +83,7 @@ const calculateHybridSimilarity = (queryEmbeddings, itemEmbeddings) => {
   };
 };
 
-// ✅ IMPROVED: Parse Gemini styling response
+
 const parseGeminiStylingResponse = (rawResponse) => {
   try {
     // Handle case where response is already parsed
@@ -132,7 +132,7 @@ const parseGeminiStylingResponse = (rawResponse) => {
       occasion: "Various occasions"
     }];
   }
-};
+};""
 
 // ===== FASHION LOGIC SYSTEM (keeping existing logic) =====
 

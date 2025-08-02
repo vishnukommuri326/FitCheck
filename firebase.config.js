@@ -4,10 +4,11 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
+import { FIREBASE_API_KEY } from '@env';
 
 // Your Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyABpK0C_2LKfNg-oj0Y3054n9npduc9o8s",
+  apiKey: FIREBASE_API_KEY,
   authDomain: "fitcheck-1c224.firebaseapp.com",
   projectId: "fitcheck-1c224",
   storageBucket: "fitcheck-1c224.firebasestorage.app",

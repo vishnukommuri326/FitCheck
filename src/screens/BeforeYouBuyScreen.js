@@ -1,4 +1,4 @@
-// Updated BeforeYouBuyScreen.js - Fixed JSON parsing and nested list issues
+// Updated BeforeYouBuyScreen.js - Direct Add to Wardrobe Feature
 import { styles } from '../styles/BeforeYouBuyScreenStyles.js';
 import { BlurView } from 'expo-blur';
 import AnalyzingAnimation from '../components/AnalyzingAnimation';
@@ -22,6 +22,9 @@ import * as ImagePicker from 'expo-image-picker';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../firebase.config';
 import { useAuth } from '../context/AuthContext';
+import { addGarment } from '../services/firebase';
+import { v4 as uuidv4 } from 'uuid';
+import SuccessModal from '../components/SuccessModal.js';
 
 const { width } = Dimensions.get('window');
 
@@ -85,6 +88,9 @@ const BeforeYouBuyScreen = ({ navigation }) => {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [publicImageUrl, setPublicImageUrl] = useState(null);
+  const [isAddingToWardrobe, setIsAddingToWardrobe] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [addedItemName, setAddedItemName] = useState('');
   
   // ✅ SIMPLIFIED: Single state for all results
   const [ragResults, setRagResults] = useState(null);
@@ -221,6 +227,66 @@ const BeforeYouBuyScreen = ({ navigation }) => {
       );
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const resetScreen = () => {
+    setImageUri(null);
+    setAnalysis(null);
+    setRagResults(null);
+    setSelectedItems([]);
+    setShowItemSelection(false);
+    setIsSuccessModalVisible(false);
+  };
+
+  // 🆕 NEW: Direct add to wardrobe function
+  const handleDirectAddToWardrobe = async () => {
+    if (!analysis || !publicImageUrl) {
+      Alert.alert('Error', 'Please wait for the analysis to complete.');
+      return;
+    }
+
+    setIsAddingToWardrobe(true);
+
+    try {
+      console.log('🛍️ Adding item directly to wardrobe...');
+
+      // Re-upload image to permanent location
+      const response = await fetch(imageUri);
+      const blob = await response.blob();
+      const filename = `wardrobe/${user.uid}/${Date.now()}-${uuidv4()}.jpg`;
+      const storageRef = ref(storage, filename);
+      await uploadBytes(storageRef, blob);
+      const permanentImageUrl = await getDownloadURL(storageRef);
+      
+      console.log('✅ Image uploaded to permanent storage');
+
+      // Extract data from analysis
+      const itemAnalysis = analysis.analysis;
+      const itemName = itemAnalysis.itemName || 'New Item';
+      const itemType = itemAnalysis.category || 'Other';
+      const itemColor = itemAnalysis.color?.primary || 'Unknown';
+
+      // Save to Firestore using the same structure as AddItemScreen
+      await addGarment(user.uid, permanentImageUrl, {
+        name: itemName,
+        type: itemType,
+        color: itemColor,
+        aiResults: analysis, // Full AI results including embeddings
+      });
+
+      console.log('✅ Item added to wardrobe successfully');
+
+      // Show success message
+      setAddedItemName(itemName);
+      console.log('Setting success modal visible');
+      setIsSuccessModalVisible(true);
+
+    } catch (error) {
+      console.error('❌ Failed to add item:', error);
+      Alert.alert('Failed to Add Item', 'Please try again or use the Add Item screen.');
+    } finally {
+      setIsAddingToWardrobe(false);
     }
   };
 
@@ -648,13 +714,7 @@ const BeforeYouBuyScreen = ({ navigation }) => {
         <View style={styles.actionBar}>
           <TouchableOpacity 
             style={styles.retakeButton} 
-            onPress={() => {
-              setImageUri(null);
-              setAnalysis(null);
-              setRagResults(null);
-              setSelectedItems([]);
-              setShowItemSelection(false);
-            }}
+            onPress={resetScreen}
           >
             <Ionicons name="refresh" size={20} color="#6B7280" />
             <Text style={styles.retakeText}>Scan Another</Text>
@@ -662,18 +722,39 @@ const BeforeYouBuyScreen = ({ navigation }) => {
           
           {analysis && (
             <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => navigation.navigate('AddItem', { 
-                imageUri, 
-                aiResults: analysis 
-              })}
+              style={[styles.addButton, isAddingToWardrobe && styles.addButtonDisabled]}
+              onPress={handleDirectAddToWardrobe}
+              disabled={isAddingToWardrobe}
             >
-              <Ionicons name="add" size={20} color="#FFF" />
-              <Text style={styles.addButtonText}>Add to Wardrobe</Text>
+              {isAddingToWardrobe ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Ionicons name="add" size={20} color="#FFF" />
+                  <Text style={styles.addButtonText}>Add to Wardrobe</Text>
+                </>
+              )}
             </TouchableOpacity>
           )}
         </View>
       )}
+      <SuccessModal
+        visible={isSuccessModalVisible}
+        onClose={() => setIsSuccessModalVisible(false)}
+        title="Added to Wardrobe!"
+        message={`${addedItemName} has been successfully added to your wardrobe.`}
+        primaryButton={{
+          text: 'View Wardrobe',
+          onPress: () => {
+            setIsSuccessModalVisible(false);
+            navigation.navigate('Wardrobe', { newItemAdded: true });
+          },
+        }}
+        secondaryButton={{
+          text: 'Scan Another',
+          onPress: resetScreen,
+        }}
+      />
     </SafeAreaView>
   );
 };

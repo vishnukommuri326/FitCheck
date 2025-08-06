@@ -1,3 +1,4 @@
+// functions/index.js
 const admin = require('firebase-admin');
 admin.initializeApp();
 
@@ -5,16 +6,16 @@ admin.initializeApp();
 const testFunctions = require('./src/test-functions');
 const geminiFunctions = require('./src/gemini-vision');
 const trueImageRAG = require('./src/true-image-rag');
+const pineconeSetup = require('./src/pinecone-setup');
+const migration = require('./src/migration');
+const pineconeSync = require('./src/pinecone-sync');  
 
-
-// Export all functions for deployment
 module.exports = {
-  // Test functions
+  // Existing functions
   ...testFunctions,
-  
-  // Gemini Vision functions
   ...geminiFunctions,
-  
-  // True Image RAG functions
   ...trueImageRAG,
+  ...pineconeSetup,
+  ...migration,
+  ...pineconeSync,  
 };

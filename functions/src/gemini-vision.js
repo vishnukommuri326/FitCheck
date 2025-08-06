@@ -244,6 +244,7 @@ const generateHybridEmbeddings = async (geminiAnalysis, imageUrl) => {
     const openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || functions.config().openai?.api_key
     });
+    console.log('OpenAI API Key (masked):', openai.apiKey ? `${openai.apiKey.substring(0, 5)}...${openai.apiKey.substring(openai.apiKey.length - 5)}` : 'Not found');
     
     if (!openai.apiKey) {
       console.warn('⚠️ OpenAI API key not found, skipping text embedding');

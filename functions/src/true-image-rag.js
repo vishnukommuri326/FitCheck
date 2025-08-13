@@ -570,7 +570,7 @@ ${analysis.confidence.notes ? `Additional details: ${analysis.confidence.notes}`
       finalCompatibleItems = compatibleItems;
       searchMethod = 'custom';
     } else {
-      // 🆕 Try Pinecone first, fallback to Firestore
+      
       console.log('🔍 ATTEMPTING PINECONE SEARCH...');
       let wardrobeItems = await searchWardrobeWithPinecone(queryEmbeddings, userId);
       

@@ -1,8 +1,9 @@
-// Updated BeforeYouBuyScreen.js - Direct Add to Wardrobe Feature
+// Updated BeforeYouBuyScreen.js - With Outfit Inspiration Feature
 import { styles } from '../styles/BeforeYouBuyScreenStyles.js';
 import { BlurView } from 'expo-blur';
 import AnalyzingAnimation from '../components/AnalyzingAnimation';
 import React, { useState, useEffect } from 'react';
+import OutfitInspirationModal from '../components/OutfitInspirationModal';
 import {
   View,
   Text,
@@ -15,7 +16,9 @@ import {
   Alert,
   FlatList,
   Dimensions,
-  Platform
+  Platform,
+  Linking,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -98,6 +101,57 @@ const BeforeYouBuyScreen = ({ navigation }) => {
   // Item selection states (for styling customization)
   const [selectedItems, setSelectedItems] = useState([]);
   const [showItemSelection, setShowItemSelection] = useState(false);
+  
+  // 🆕 Outfit Inspiration states
+  const [showInspiration, setShowInspiration] = useState(false);
+  const [inspirationData, setInspirationData] = useState(null);
+  const [loadingInspiration, setLoadingInspiration] = useState(false);
+
+  // 🆕 Get Outfit Inspiration function
+  const getOutfitInspiration = async () => {
+    if (!analysis) {
+      Alert.alert('Please wait', 'Item analysis is still processing');
+      return;
+    }
+    
+    setLoadingInspiration(true);
+    
+    try {
+      console.log('🎨 Fetching outfit inspiration...');
+      
+      const response = await fetch(
+        'https://us-central1-fitcheck-1c224.cloudfunctions.net/getOutfitInspiration',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            data: { 
+              itemAnalysis: analysis // Pass the Gemini analysis
+            }
+          })
+        }
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Failed to get inspiration: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log(`✅ Got ${result.inspiration?.images?.length || 0} outfit ideas`);
+      
+      setInspirationData(result.inspiration);
+      setShowInspiration(true);
+      
+    } catch (error) {
+      console.error('❌ Failed to get outfit inspiration:', error);
+      Alert.alert(
+        'Failed to Load Inspiration',
+        'Please try again later'
+      );
+    } finally {
+      setLoadingInspiration(false);
+    }
+  };
 
   const handleCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -230,6 +284,7 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     }
   };
 
+  // 🆕 UPDATED: Reset screen function with inspiration states
   const resetScreen = () => {
     setImageUri(null);
     setAnalysis(null);
@@ -237,6 +292,8 @@ const BeforeYouBuyScreen = ({ navigation }) => {
     setSelectedItems([]);
     setShowItemSelection(false);
     setIsSuccessModalVisible(false);
+    setInspirationData(null);  // 🆕 Add this
+    setShowInspiration(false); // 🆕 Add this
   };
 
   // 🆕 NEW: Direct add to wardrobe function
@@ -707,6 +764,25 @@ const BeforeYouBuyScreen = ({ navigation }) => {
             )}
           </View>
         )}
+
+        {/* 🆕 GET OUTFIT INSPIRATION BUTTON */}
+        {analysis && !isAnalyzing && (
+          <TouchableOpacity 
+            style={styles.inspirationButton}
+            onPress={getOutfitInspiration}
+            disabled={loadingInspiration}
+          >
+            {loadingInspiration ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <>
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                <Text style={styles.inspirationButtonText}>Get Outfit Inspiration</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        )}
+        
       </ScrollView>
 
       {/* Action Bar */}
@@ -738,6 +814,8 @@ const BeforeYouBuyScreen = ({ navigation }) => {
           )}
         </View>
       )}
+
+      {/* Success Modal */}
       <SuccessModal
         visible={isSuccessModalVisible}
         onClose={() => setIsSuccessModalVisible(false)}
@@ -754,6 +832,18 @@ const BeforeYouBuyScreen = ({ navigation }) => {
           text: 'Scan Another',
           onPress: resetScreen,
         }}
+      />
+
+      {/* 🆕 OUTFIT INSPIRATION MODAL */}
+      {/* ENHANCED OUTFIT INSPIRATION MODAL */}
+      <OutfitInspirationModal
+        visible={showInspiration}
+        onClose={() => setShowInspiration(false)}
+        analysis={analysis}
+        imageUri={imageUri}
+        inspirationData={inspirationData}
+        loadingInspiration={loadingInspiration}
+        userId={user.uid}
       />
     </SafeAreaView>
   );

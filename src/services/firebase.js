@@ -181,7 +181,7 @@ export const updateGarment = async (userId, garmentId, updatedData) => {
     await updateDoc(garmentRef, updatedData);
     console.log('✅ Updated in Firestore:', garmentId);
     
-    // 2. 🆕 UPDATE IN PINECONE
+
     try {
       console.log('📝 Updating in Pinecone...');
       const response = await fetch(
@@ -204,7 +204,7 @@ export const updateGarment = async (userId, garmentId, updatedData) => {
       } else {
         const errorText = await response.text();
         console.warn('⚠️ Pinecone update failed:', errorText);
-        // If item not in Pinecone, that's okay - it might be an old item
+        
         if (!errorText.includes('not found')) {
           console.error('Pinecone update error:', errorText);
         }

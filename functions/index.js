@@ -8,7 +8,9 @@ const geminiFunctions = require('./src/gemini-vision');
 const trueImageRAG = require('./src/true-image-rag');
 const pineconeSetup = require('./src/pinecone-setup');
 const migration = require('./src/migration');
-const pineconeSync = require('./src/pinecone-sync');  
+const pineconeSync = require('./src/pinecone-sync');
+const outfitInspiration = require('./src/outfit-inspiration'); 
+const aiStylistChat = require('./src/ai-stylist-chat');
 
 module.exports = {
   // Existing functions
@@ -17,5 +19,7 @@ module.exports = {
   ...trueImageRAG,
   ...pineconeSetup,
   ...migration,
-  ...pineconeSync,  
+  ...pineconeSync,
+  ...outfitInspiration,
+  ...aiStylistChat,
 };

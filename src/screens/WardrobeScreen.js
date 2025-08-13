@@ -11,8 +11,10 @@ import {
   TextInput,
   Animated,
   Modal,
+  StatusBar,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Swipeable } from 'react-native-gesture-handler';
 import styles from '../styles/WardrobeScreenStyles.js';
 
@@ -101,27 +103,30 @@ const AnimatedWardrobeItem = ({ item, index, onPress, onEdit, onDelete, selectMo
       <Swipeable renderRightActions={renderRightActions}>
         <TouchableOpacity 
           style={styles.itemContainer} 
-          activeOpacity={0.8}
+          activeOpacity={0.95}
           onPress={() => onPress(item, selectMode)}
         >
           <Image source={{ uri: item.imageUrl }} style={styles.itemImage} />
-          <TouchableOpacity style={styles.favoriteButton} onPress={() => onToggleFavorite(item.id)} testID={`favorite-button-${item.id}`}>
-            <Ionicons name={item.isFavorite ? "heart" : "heart-outline"} size={20} color="#FFFFFF" testID={`favorite-icon-${item.id}`} />
+          <TouchableOpacity 
+            style={styles.favoriteButton} 
+            onPress={() => onToggleFavorite(item.id)} 
+            testID={`favorite-button-${item.id}`}
+            activeOpacity={0.8}
+          >
+            <Ionicons 
+              name={item.isFavorite ? "heart" : "heart-outline"} 
+              size={18} 
+              color="#FFFFFF" 
+              testID={`favorite-icon-${item.id}`} 
+            />
           </TouchableOpacity>
           <View style={styles.itemInfo}>
-            {/* FIXED: Safe access to item data */}
             <Text style={styles.itemName} numberOfLines={1}>
               {item.tags?.name || item.name || 'Unnamed Item'}
             </Text>
             <Text style={styles.itemDetails}>
               {item.tags?.type || item.type || 'Unknown Type'}
             </Text>
-            <View style={styles.colorRow}>
-              <View style={[styles.colorDot, { backgroundColor: (item.tags?.color || item.color || '#000000').toLowerCase() }]} />
-              <Text style={styles.colorText}>
-                {item.tags?.color || item.color || 'Unknown Color'}
-              </Text>
-            </View>
           </View>
         </TouchableOpacity>
       </Swipeable>
@@ -182,7 +187,7 @@ const WardrobeScreen = ({ navigation, route }) => {
     useCallback(() => {
       loadWardrobeItems();
       if (route.params?.newItemAdded) {
-        navigation.setParams({ newItemAdded: false }); // Reset the param
+        navigation.setParams({ newItemAdded: false });
       }
     }, [route.params?.newItemAdded, loadWardrobeItems])
   );
@@ -209,9 +214,7 @@ const WardrobeScreen = ({ navigation, route }) => {
     ]).start();
   }, []);
 
-  // FIXED: filteredItems logic
   const filteredItems = wardrobeItems.filter(item => {
-    // Safe access to search fields
     const itemName = item.tags?.name || item.name || '';
     const itemColor = item.tags?.color || item.color || '';
     
@@ -222,13 +225,12 @@ const WardrobeScreen = ({ navigation, route }) => {
       return matchesSearch;
     } else if (selectedCategory === 'Favorites') {
       return item.isFavorite && matchesSearch;
-    } else { // Specific category like 'Tops', 'Bottoms', etc.
+    } else {
       const itemType = item.tags?.type || item.type || '';
       return itemType === selectedCategory && matchesSearch;
     }
   });
 
-  // FIXED: handleEdit function
   const handleEdit = (item) => {
     console.log('Edit item:', item.tags?.name || item.name || 'Unnamed');
     setSelectedItem(item);
@@ -239,7 +241,6 @@ const WardrobeScreen = ({ navigation, route }) => {
     setEditModalVisible(true);
   };
 
-  // FIXED: handleSaveEdit function
   const handleSaveEdit = async () => {
     if (!editName || !editType || !editColor) {
       alert('Please fill in all fields');
@@ -247,16 +248,13 @@ const WardrobeScreen = ({ navigation, route }) => {
     }
 
     try {
-      // Update both old and new data structure
       const updatedData = {
         tags: {
           name: editName,
           type: editType,
           color: editColor,
-          // Preserve any existing aiResults
           ...(selectedItem.tags?.aiResults && { aiResults: selectedItem.tags.aiResults })
         },
-        // Also update root level for compatibility
         name: editName,
         type: editType,
         color: editColor
@@ -272,7 +270,6 @@ const WardrobeScreen = ({ navigation, route }) => {
     }
   };
 
-  // FIXED: handleDelete function
   const handleDelete = async (itemToDelete) => {
     const itemName = itemToDelete.tags?.name || itemToDelete.name || 'Unnamed Item';
     console.log('Delete item:', itemName);
@@ -280,7 +277,7 @@ const WardrobeScreen = ({ navigation, route }) => {
       await deleteGarment(user.uid, itemToDelete.id);
       loadWardrobeItems();
       console.log('Item deleted from Firestore:', itemName);
-      closeModal(); // Close modal if item was deleted from detail view
+      closeModal();
     } catch (error) {
       console.error('Error deleting item from Firestore:', error);
       alert('Failed to delete item. Please try again.');
@@ -293,7 +290,6 @@ const WardrobeScreen = ({ navigation, route }) => {
     } else {
       setSelectedItem(item);
       setModalVisible(true);
-      // Animate modal in
       Animated.spring(modalSlideAnim, {
         toValue: 0,
         friction: 9,
@@ -304,7 +300,6 @@ const WardrobeScreen = ({ navigation, route }) => {
   };
 
   const closeModal = () => {
-    // Animate modal out
     Animated.timing(modalSlideAnim, {
       toValue: 300,
       duration: 200,
@@ -329,29 +324,35 @@ const WardrobeScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
+      {/* Premium Header */}
       <View style={styles.header}>
         <TouchableOpacity 
           style={styles.backButton}
-          onPress={() => navigation.navigate('Home')}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
         >
-          <Ionicons name="arrow-back" size={24} color="#333333" />
+          <Ionicons name="arrow-back" size={24} color="#000000" />
         </TouchableOpacity>
-        <Text style={styles.title}>My Wardrobe</Text>
-        <View style={styles.headerActions}>
-          <TouchableOpacity style={styles.headerButton}>
-            <Ionicons name="filter-outline" size={24} color="#333333" />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('AddItem')}
+        <Text style={styles.title}>Wardrobe</Text>
+        <TouchableOpacity 
+          style={styles.addIconButton}
+          onPress={() => navigation.navigate('AddItem')}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['#F97316', '#EC4899']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.gradientButton}
           >
-            <Ionicons name="add" size={24} color="#333333" />
-          </TouchableOpacity>
-        </View>
+            <Ionicons name="add" size={24} color="#FFFFFF" />
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
+      {/* Search Bar - Premium Style */}
       <Animated.View 
         style={[
           styles.searchContainer,
@@ -362,23 +363,23 @@ const WardrobeScreen = ({ navigation, route }) => {
         ]}
       >
         <View style={styles.searchBar}>
-          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Ionicons name="search-outline" size={20} color="#8A8F99" />
           <TextInput
             style={styles.searchInput}
-            placeholder="Search your wardrobe..."
-            placeholderTextColor="#9CA3AF"
+            placeholder="Search items..."
+            placeholderTextColor="#8A8F99"
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
           {searchQuery ? (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <Ionicons name="close-circle" size={20} color="#9CA3AF" />
+            <TouchableOpacity onPress={() => setSearchQuery('')} activeOpacity={0.8}>
+              <Ionicons name="close-circle" size={20} color="#8A8F99" />
             </TouchableOpacity>
           ) : null}
         </View>
       </Animated.View>
 
-      {/* Categories */}
+      {/* Categories - Premium Style */}
       <Animated.ScrollView 
         horizontal 
         showsHorizontalScrollIndicator={false}
@@ -396,6 +397,7 @@ const WardrobeScreen = ({ navigation, route }) => {
               selectedCategory === category && styles.categoryChipActive
             ]}
             onPress={() => setSelectedCategory(category)}
+            activeOpacity={0.8}
           >
             <Text style={[
               styles.categoryText,
@@ -407,11 +409,13 @@ const WardrobeScreen = ({ navigation, route }) => {
         ))}
       </Animated.ScrollView>
 
-      {/* Stats Bar */}
+      {/* Stats Bar - Premium Style */}
       <View style={styles.statsBar}>
-        <Text style={styles.statsText}>{filteredItems.length} items</Text>
-        <TouchableOpacity style={styles.sortButton}>
-          <Text style={styles.sortText}>Sort by</Text>
+        <Text style={styles.statsText}>
+          <Text style={styles.statsNumber}>{filteredItems.length}</Text> items
+        </Text>
+        <TouchableOpacity style={styles.sortButton} activeOpacity={0.8}>
+          <Text style={styles.sortText}>Recently added</Text>
           <Ionicons name="chevron-down" size={16} color="#F97316" />
         </TouchableOpacity>
       </View>
@@ -429,22 +433,25 @@ const WardrobeScreen = ({ navigation, route }) => {
         />
       ) : (
         <View style={styles.emptyState}>
-          <Ionicons name="shirt-outline" size={64} color="#E2E5EA" />
-          <Text style={styles.emptyTitle}>No items found</Text>
+          <View style={styles.emptyIconContainer}>
+            <Ionicons name="shirt-outline" size={48} color="#8A8F99" />
+          </View>
+          <Text style={styles.emptyTitle}>No items yet</Text>
           <Text style={styles.emptySubtitle}>
-            Try adjusting your filters or add new items
+            Add your first item to get started
           </Text>
           <TouchableOpacity 
             style={styles.addButton}
             onPress={() => navigation.navigate('AddItem')}
+            activeOpacity={0.8}
           >
-            <Ionicons name="add" size={20} color="#FFFFFF" />
-            <Text style={styles.addButtonText}>Add Item</Text>
+            <Text style={styles.addButtonText}>Add Your First Item</Text>
+            <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
       )}
 
-      {/* Floating Action Button */}
+      {/* Premium Floating Action Button */}
       <Animated.View
         style={[
           styles.fab,
@@ -461,7 +468,7 @@ const WardrobeScreen = ({ navigation, route }) => {
         ]}
       >
         <TouchableOpacity 
-          activeOpacity={0.8}
+          activeOpacity={0.95}
           onPress={() => navigation.navigate('Recommendations')}
           style={{ width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' }}
         >
@@ -469,7 +476,7 @@ const WardrobeScreen = ({ navigation, route }) => {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* Item Detail Modal */}
+      {/* Item Detail Modal - Premium Style */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -493,15 +500,21 @@ const WardrobeScreen = ({ navigation, route }) => {
                     <TouchableOpacity
                       style={styles.closeButton}
                       onPress={closeModal}
+                      activeOpacity={0.8}
                     >
-                      <Ionicons name="close" size={24} color="#333333" />
+                      <Ionicons name="close" size={24} color="#000000" />
                     </TouchableOpacity>
                     <Text style={styles.modalTitle}>Item Details</Text>
                     <TouchableOpacity
                       style={styles.favoriteButtonModal}
                       onPress={() => toggleFavorite(selectedItem.id)}
+                      activeOpacity={0.8}
                     >
-                      <Ionicons name={selectedItem.isFavorite ? "heart" : "heart-outline"} size={24} color="#EC4899" />
+                      <Ionicons 
+                        name={selectedItem.isFavorite ? "heart" : "heart-outline"} 
+                        size={24} 
+                        color={selectedItem.isFavorite ? "#F97316" : "#8A8F99"} 
+                      />
                     </TouchableOpacity>
                   </View>
 
@@ -512,7 +525,7 @@ const WardrobeScreen = ({ navigation, route }) => {
                     resizeMode="cover"
                   />
 
-                  {/* Item Info - FIXED */}
+                  {/* Item Info */}
                   <View style={styles.modalInfo}>
                     <Text style={styles.modalItemName}>
                       {selectedItem.tags?.name || selectedItem.name || 'Unnamed Item'}
@@ -520,25 +533,26 @@ const WardrobeScreen = ({ navigation, route }) => {
                     
                     <View style={styles.modalDetailsRow}>
                       <View style={styles.modalDetailItem}>
-                        <Text style={styles.modalDetailLabel}>Type</Text>
+                        <Text style={styles.modalDetailLabel}>TYPE</Text>
                         <Text style={styles.modalDetailValue}>
-                          {selectedItem.tags?.type || selectedItem.type || 'Unknown Type'}
+                          {selectedItem.tags?.type || selectedItem.type || 'Unknown'}
                         </Text>
                       </View>
+                      <View style={styles.modalDetailDivider} />
                       <View style={styles.modalDetailItem}>
-                        <Text style={styles.modalDetailLabel}>Color</Text>
+                        <Text style={styles.modalDetailLabel}>COLOR</Text>
                         <View style={styles.modalColorRow}>
                           <View style={[styles.modalColorDot, { 
                             backgroundColor: (selectedItem.tags?.color || selectedItem.color || '#000000').toLowerCase() 
                           }]} />
                           <Text style={styles.modalDetailValue}>
-                            {selectedItem.tags?.color || selectedItem.color || 'Unknown Color'}
+                            {selectedItem.tags?.color || selectedItem.color || 'Unknown'}
                           </Text>
                         </View>
                       </View>
                     </View>
 
-                    {/* AI Analysis Section - NEW */}
+                    {/* AI Analysis Section */}
                     {(selectedItem.tags?.aiResults || selectedItem.trueImageEmbedding) && (
                       <View style={styles.modalSection}>
                         <Text style={styles.modalSectionTitle}>AI Analysis</Text>
@@ -564,63 +578,12 @@ const WardrobeScreen = ({ navigation, route }) => {
                               </Text>
                             </View>
                           )}
-                          {selectedItem.trueImageEmbedding && (
-                            <View style={[styles.modalTag, { backgroundColor: '#10B981' }]}>
-                              <Text style={[styles.modalTagText, { color: 'white' }]}>
-                                🧠 AI Enhanced
-                              </Text>
-                            </View>
-                          )}
                         </View>
                       </View>
                     )}
 
-                    {/* Additional Details */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Additional Details</Text>
-                      <View style={styles.modalTagsContainer}>
-                        <View style={styles.modalTag}>
-                          <Text style={styles.modalTagText}>
-                            {selectedItem.tags?.aiResults?.analysis?.style || 'Casual'}
-                          </Text>
-                        </View>
-                        <View style={styles.modalTag}>
-                          <Text style={styles.modalTagText}>
-                            {selectedItem.tags?.aiResults?.analysis?.season || 'Summer'}
-                          </Text>
-                        </View>
-                        <View style={styles.modalTag}>
-                          <Text style={styles.modalTagText}>
-                            {selectedItem.tags?.aiResults?.analysis?.occasion || 'Everyday'}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-
-                    {/* Notes Section */}
-                    <View style={styles.modalSection}>
-                      <Text style={styles.modalSectionTitle}>Notes</Text>
-                      <Text style={styles.modalNotes}>
-                        {selectedItem.imageDescription || 
-                         selectedItem.tags?.aiResults?.imageDescription || 
-                         'Perfect for casual outings. Goes well with denim or khakis.'}
-                      </Text>
-                    </View>
-
                     {/* Action Buttons */}
                     <View style={styles.modalActions}>
-                      {selectMode && (
-                        <TouchableOpacity
-                          style={[styles.modalActionButton, styles.addToPlannerButton]}
-                          onPress={() => {
-                            closeModal();
-                            navigation.navigate('WeeklyPlanner', { selectedItem: selectedItem, selectedDayIndex: selectedDayIndex });
-                          }}
-                        >
-                          <Ionicons name="calendar-outline" size={20} color="#FFFFFF" />
-                          <Text style={styles.modalActionText}>Add to Planner</Text>
-                        </TouchableOpacity>
-                      )}
                       <TouchableOpacity 
                         style={styles.modalActionButton}
                         onPress={() => {
@@ -629,6 +592,7 @@ const WardrobeScreen = ({ navigation, route }) => {
                             navigation.navigate('Recommendations', { item: selectedItem });
                           }, 300);
                         }}
+                        activeOpacity={0.8}
                       >
                         <Ionicons name="sparkles" size={20} color="#FFFFFF" />
                         <Text style={styles.modalActionText}>Style This</Text>
@@ -637,6 +601,7 @@ const WardrobeScreen = ({ navigation, route }) => {
                       <TouchableOpacity 
                         style={[styles.modalActionButton, styles.modalEditButton]}
                         onPress={() => handleEdit(selectedItem)}
+                        activeOpacity={0.8}
                       >
                         <Ionicons name="pencil" size={20} color="#F97316" />
                         <Text style={[styles.modalActionText, { color: '#F97316' }]}>Edit</Text>
@@ -650,7 +615,7 @@ const WardrobeScreen = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Edit Item Modal */}
+      {/* Edit Item Modal - Premium Style */}
       <Modal
         animationType="slide"
         transparent={true}
@@ -663,13 +628,15 @@ const WardrobeScreen = ({ navigation, route }) => {
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={() => setEditModalVisible(false)}
+                activeOpacity={0.8}
               >
-                <Ionicons name="close" size={24} color="#333333" />
+                <Ionicons name="close" size={24} color="#000000" />
               </TouchableOpacity>
               <Text style={styles.modalTitle}>Edit Item</Text>
               <TouchableOpacity
                 style={styles.saveButton}
                 onPress={handleSaveEdit}
+                activeOpacity={0.8}
               >
                 <Text style={styles.saveButtonText}>Save</Text>
               </TouchableOpacity>
@@ -678,28 +645,26 @@ const WardrobeScreen = ({ navigation, route }) => {
             <ScrollView showsVerticalScrollIndicator={false}>
               {selectedItem && (
                 <>
-                  {/* Item Image Preview - FIXED */}
                   <Image 
                     source={{ uri: selectedItem.imageUrl }} 
                     style={styles.editImagePreview}
                     resizeMode="cover"
                   />
 
-                  {/* Edit Form */}
                   <View style={styles.editForm}>
                     <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Item Name</Text>
+                      <Text style={styles.inputLabel}>ITEM NAME</Text>
                       <TextInput
                         style={styles.textInput}
                         value={editName}
                         onChangeText={setEditName}
                         placeholder="Enter item name"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#8A8F99"
                       />
                     </View>
 
                     <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Type</Text>
+                      <Text style={styles.inputLabel}>TYPE</Text>
                       <ScrollView 
                         horizontal 
                         showsHorizontalScrollIndicator={false}
@@ -713,6 +678,7 @@ const WardrobeScreen = ({ navigation, route }) => {
                               editType === type && styles.typeChipActive
                             ]}
                             onPress={() => setEditType(type)}
+                            activeOpacity={0.8}
                           >
                             <Text style={[
                               styles.typeChipText,
@@ -726,23 +692,23 @@ const WardrobeScreen = ({ navigation, route }) => {
                     </View>
 
                     <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Color</Text>
+                      <Text style={styles.inputLabel}>COLOR</Text>
                       <TextInput
                         style={styles.textInput}
                         value={editColor}
                         onChangeText={setEditColor}
                         placeholder="Enter color"
-                        placeholderTextColor="#9CA3AF"
+                        placeholderTextColor="#8A8F99"
                       />
                     </View>
 
-                    {/* Delete Button */}
                     <TouchableOpacity 
                       style={styles.deleteButton}
                       onPress={() => {
                         setEditModalVisible(false);
                         handleDelete(selectedItem);
                       }}
+                      activeOpacity={0.8}
                     >
                       <Ionicons name="trash-outline" size={20} color="#EF4444" />
                       <Text style={styles.deleteButtonText}>Delete Item</Text>

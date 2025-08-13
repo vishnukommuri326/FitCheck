@@ -617,6 +617,12 @@ export const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
   },
+  stylingAdviceTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#333333',
+    marginBottom: 16,
+  },
   stylingAdviceSectionTitle: {
     fontSize: 16, // Slightly larger font size
     fontWeight: '700', // Bolder
@@ -678,6 +684,20 @@ export const styles = StyleSheet.create({
     color: '#4B5563',
     marginBottom: 2,
   },
+  outfitOccasionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E7EB',
+  },
+  outfitOccasion: {
+    fontSize: 13,
+    color: '#6B7280',
+    fontStyle: 'italic',
+  },
   customNote: {
     fontSize: 13,
     color: '#8B5CF6',
@@ -686,6 +706,215 @@ export const styles = StyleSheet.create({
     paddingTop: 12,
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
+  },
+
+  // === OUTFIT INSPIRATION BUTTON STYLES ===
+  inspirationButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#8B5CF6',
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginHorizontal: 24,
+    marginTop: 20,
+    marginBottom: 20,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#8B5CF6',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 5,
+      },
+    }),
+  },
+  inspirationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+
+  // === MODAL STYLES ===
+  modalContainer: {
+    flex: 1,
+    backgroundColor: '#FFFBF5', // Match your app's background
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  modalCloseButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#333333',
+    letterSpacing: -0.5,
+  },
+
+  // === SCANNED ITEM REMINDER STYLES ===
+  scannedItemReminder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    marginHorizontal: 20,
+    marginTop: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
+  },
+  reminderImage: {
+    width: 60,
+    height: 80,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  reminderTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  reminderTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 4,
+  },
+  reminderSubtitle: {
+    fontSize: 14,
+    color: '#6B7280',
+  },
+
+  // === INSPIRATION SECTION STYLES ===
+  inspirationSectionTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#333333',
+    marginHorizontal: 20,
+    marginTop: 24,
+    marginBottom: 16,
+  },
+
+  // === OUTFIT IMAGES GRID STYLES ===
+  inspirationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
+    justifyContent: 'space-between',
+  },
+  outfitImageCard: {
+    width: (width - 48) / 2, // 2 columns with spacing
+    marginBottom: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+    backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 3,
+      },
+    }),
+  },
+  outfitInspirationImage: {
+    width: '100%',
+    height: 220,
+    backgroundColor: '#F3F4F6',
+  },
+  outfitImageInfo: {
+    padding: 12,
+    backgroundColor: '#FFFFFF',
+  },
+  photographerCredit: {
+    fontSize: 12,
+    color: '#6B7280',
+    fontWeight: '500',
+  },
+
+  // === NO IMAGES CONTAINER STYLES ===
+  noImagesContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 40,
+  },
+  noImagesText: {
+    fontSize: 14,
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: 20,
+  },
+
+  // === PLATFORM LINKS STYLES ===
+  platformLinksContainer: {
+    marginHorizontal: 20,
+    marginBottom: 30,
+  },
+  platformButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  platformButtonText: {
+    flex: 1,
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#333333',
+    marginLeft: 12,
   },
   
   // Action bar - floating style
@@ -741,5 +970,8 @@ export const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  addButtonDisabled: {
+    opacity: 0.6,
   },
 });

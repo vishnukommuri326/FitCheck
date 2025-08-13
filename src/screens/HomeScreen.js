@@ -1,118 +1,581 @@
+// HomeScreen.js - Premium Minimalist Design
 import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   Image,
+  Dimensions,
+  StatusBar,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import styles from '../styles/HomeScreenStyles';
 import { useAuth } from '../context/AuthContext';
 
-const HomeScreen = ({ navigation }) => {
-  const { logout } = useAuth();
-  const [profileImage, setProfileImage] = useState(null);
+const { width, height } = Dimensions.get('window');
 
+const HomeScreen = ({ navigation }) => {
+  const { logout, user } = useAuth();
+  const [profileImage, setProfileImage] = useState(null);
+  const [firstName, setFirstName] = useState('');
+  
   useEffect(() => {
-    const loadProfileImage = async () => {
+    const loadProfileData = async () => {
       try {
         const savedImage = await AsyncStorage.getItem('profileImage');
-        if (savedImage) {
-          setProfileImage(savedImage);
+        const savedName = await AsyncStorage.getItem('userName');
+        if (savedImage) setProfileImage(savedImage);
+        if (savedName) {
+          const name = savedName.split(' ')[0];
+          setFirstName(name);
         }
       } catch (error) {
-        console.error('Failed to load profile image from AsyncStorage:', error);
+        console.error('Failed to load profile data:', error);
       }
     };
 
-    loadProfileImage();
-
-    // Add a listener for when the screen is focused to reload the image
-    const unsubscribe = navigation.addListener('focus', () => {
-      loadProfileImage();
-    });
-
+    loadProfileData();
+    const unsubscribe = navigation.addListener('focus', loadProfileData);
     return unsubscribe;
   }, [navigation]);
-  // Get current date info
-  const today = new Date();
-  const currentDayIndex = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
-  const currentDate = today.getDate();
-  
-  // Calculate dates for the week (starting from Monday)
-  const getWeekDates = () => {
-    const dates = [];
-    const startOfWeek = new Date(today);
-    const daysSinceMonday = (currentDayIndex === 0 ? 6 : currentDayIndex - 1);
-    startOfWeek.setDate(currentDate - daysSinceMonday);
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(startOfWeek);
-      date.setDate(startOfWeek.getDate() + i);
-      dates.push(date.getDate());
-    }
-    return dates;
-  };
-  
-  const weekDates = getWeekDates();
-  const adjustedTodayIndex = currentDayIndex === 0 ? 6 : currentDayIndex - 1; // Adjust for Monday start
-  
-  // Same outfit data as WeeklyPlannerScreen
-  const weeklyOutfits = {
-    0: { 
-      image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=400&h=400&fit=crop', 
-      style: 'Casual Monday'
-    },
-    1: { 
-      image: 'https://images.unsplash.com/photo-1552374196-1ab2a1c593e8?w=400&h=400&fit=crop', 
-      style: 'Business'
-    },
-    2: { 
-      image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', 
-      style: 'Smart Casual'
-    },
-    3: { 
-      image: 'https://images.unsplash.com/photo-1516826957135-700dedea698c?w=400&h=400&fit=crop', 
-      style: 'WFH'
-    },
-    4: { 
-      image: 'https://images.unsplash.com/photo-1519406596751-0a3ccc4937fe?w=400&h=400&fit=crop', 
-      style: 'Friday'
-    },
-    5: { 
-      image: 'https://images.unsplash.com/photo-1503342217505-b0a15ec3261c?w=400&h=400&fit=crop', 
-      style: 'Brunch'
-    },
-    6: { 
-      image: 'https://images.unsplash.com/photo-1480264104733-84fb0b925be3?w=400&h=400&fit=crop', 
-      style: 'Relaxed'
-    },
-  };
-  // Dummy data for recent items
-  const recentItems = [
-    { id: 1, image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=200&h=200&fit=crop' },
-    { id: 2, image: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=200&h=200&fit=crop' },
-    { id: 3, image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=200&h=200&fit=crop' },
+
+  // Premium wardrobe preview
+  const wardrobePreview = [
+    { id: 1, image: 'https://images.unsplash.com/photo-1434389677669-e08b4cac3105?w=400&h=400&fit=crop', name: 'Classic White Shirt' },
+    { id: 2, image: 'https://images.unsplash.com/photo-1523381210434-271e8be1f52b?w=400&h=400&fit=crop', name: 'Essential Tee' },
+    { id: 3, image: 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=400&fit=crop', name: 'Black Jacket' },
+    { id: 4, image: 'https://images.unsplash.com/photo-1488161628813-04466f872be2?w=400&h=400&fit=crop', name: 'Premium Denim' },
   ];
+
+  const styles = {
+    container: {
+      flex: 1,
+      backgroundColor: '#FAFBFC', // Subtle premium gray-white
+    },
+    scrollView: {
+      flex: 1,
+    },
+    scrollContent: {
+      paddingBottom: 100,
+    },
+    
+    // Premium header with subtle depth
+    header: {
+      paddingHorizontal: 28,
+      paddingTop: StatusBar.currentHeight || 20,
+      paddingBottom: 12,
+      backgroundColor: '#FFFFFF',
+      borderBottomWidth: 0.5,
+      borderBottomColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    headerContent: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 28,
+    },
+    greetingContainer: {
+      flex: 1,
+    },
+    greetingTime: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: '#8A8F99',
+      letterSpacing: 0.3,
+      marginBottom: 6,
+    },
+    greeting: {
+      fontSize: 28,
+      fontWeight: '300',
+      color: '#1A1D26',
+      letterSpacing: -0.5,
+    },
+    greetingBold: {
+      fontWeight: '600',
+      color: '#000000',
+    },
+    profileButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      overflow: 'hidden',
+      backgroundColor: '#F5F6F8',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: 'rgba(0, 0, 0, 0.04)',
+    },
+    profileImage: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+    },
+    
+    // Premium hero card with gradient accent
+    heroSection: {
+      paddingHorizontal: 28,
+      marginTop: 24,
+      marginBottom: 32,
+    },
+    heroCard: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 24,
+      overflow: 'hidden',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.08,
+          shadowRadius: 24,
+        },
+        android: {
+          elevation: 6,
+        },
+      }),
+    },
+    heroGradientStrip: {
+      height: 4,
+      background: 'linear-gradient(90deg, #F97316 0%, #EC4899 100%)',
+    },
+    heroContent: {
+      padding: 24,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    heroLeft: {
+      flex: 1,
+      marginRight: 20,
+    },
+    heroTitle: {
+      fontSize: 22,
+      fontWeight: '600',
+      color: '#000000',
+      marginBottom: 8,
+      letterSpacing: -0.3,
+    },
+    heroSubtitle: {
+      fontSize: 14,
+      color: '#6B7280',
+      lineHeight: 20,
+      marginBottom: 20,
+    },
+    heroButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#F97316',
+      alignSelf: 'flex-start',
+      paddingHorizontal: 18,
+      paddingVertical: 10,
+      borderRadius: 12,
+    },
+    heroButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginRight: 6,
+    },
+    heroIconContainer: {
+      width: 64,
+      height: 64,
+      borderRadius: 20,
+      backgroundColor: '#FFF5F0',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    
+    // Premium action cards with subtle animations
+    actionSection: {
+      paddingHorizontal: 28,
+      marginBottom: 32,
+    },
+    actionRow: {
+      flexDirection: 'row',
+      gap: 16,
+    },
+    actionCard: {
+      flex: 1,
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: 20,
+      minHeight: 120,
+      borderWidth: 1,
+      borderColor: 'rgba(0, 0, 0, 0.04)',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.04,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    wardrobeActionCard: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: 24,
+      marginBottom: 16,
+      borderWidth: 1,
+      borderColor: 'rgba(0, 0, 0, 0.04)',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.08,
+          shadowRadius: 20,
+        },
+        android: {
+          elevation: 4,
+        },
+      }),
+    },
+    wardrobeActionContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      flex: 1,
+    },
+    wardrobeActionLeft: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    wardrobeIconContainer: {
+      width: 56,
+      height: 56,
+      borderRadius: 16,
+      marginRight: 16,
+      justifyContent: 'center',
+      alignItems: 'center',
+      overflow: 'hidden',
+    },
+    wardrobeTextContainer: {
+      flex: 1,
+    },
+    wardrobeActionTitle: {
+      fontSize: 17,
+      fontWeight: '600',
+      color: '#000000',
+      marginBottom: 4,
+      letterSpacing: -0.3,
+    },
+    wardrobeActionSubtitle: {
+      fontSize: 14,
+      color: '#6B7280',
+    },
+    wardrobeActionButton: {
+      backgroundColor: '#F97316',
+      borderRadius: 14,
+      paddingHorizontal: 20,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    wardrobeActionButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginRight: 4,
+    },
+    actionIconWrapper: {
+      width: 40,
+      height: 40,
+      borderRadius: 12,
+      marginBottom: 12,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    actionTitle: {
+      fontSize: 15,
+      fontWeight: '600',
+      color: '#000000',
+      marginBottom: 4,
+      letterSpacing: -0.2,
+    },
+    actionDescription: {
+      fontSize: 13,
+      color: '#8A8F99',
+      lineHeight: 18,
+    },
+    
+    // Premium stats display
+    statsSection: {
+      marginHorizontal: 28,
+      marginBottom: 32,
+    },
+    statsCard: {
+      backgroundColor: '#FFFFFF',
+      borderRadius: 20,
+      padding: 20,
+      borderWidth: 1,
+      borderColor: 'rgba(0, 0, 0, 0.04)',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.04,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    statsRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-around',
+    },
+    statItem: {
+      alignItems: 'center',
+      flex: 1,
+    },
+    statValue: {
+      fontSize: 32,
+      fontWeight: '200',
+      color: '#000000',
+      marginBottom: 4,
+    },
+    statValueBold: {
+      fontWeight: '600',
+    },
+    statLabel: {
+      fontSize: 12,
+      color: '#8A8F99',
+      fontWeight: '500',
+      letterSpacing: 0.3,
+      textTransform: 'uppercase',
+    },
+    statDivider: {
+      width: 0.5,
+      height: 40,
+      backgroundColor: 'rgba(0, 0, 0, 0.08)',
+      alignSelf: 'center',
+    },
+    
+    // Section headers - premium style
+    sectionHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      paddingHorizontal: 28,
+      marginBottom: 20,
+    },
+    sectionTitle: {
+      fontSize: 20,
+      fontWeight: '600',
+      color: '#000000',
+      letterSpacing: -0.3,
+    },
+    sectionLink: {
+      fontSize: 14,
+      color: '#F97316',
+      fontWeight: '500',
+    },
+    
+    // Premium wardrobe grid
+    wardrobeSection: {
+      marginBottom: 32,
+    },
+    wardrobeScroll: {
+      paddingLeft: 28,
+    },
+    wardrobeCard: {
+      width: 140,
+      marginRight: 16,
+    },
+    wardrobeImageContainer: {
+      width: 140,
+      height: 140,
+      borderRadius: 16,
+      overflow: 'hidden',
+      backgroundColor: '#F5F6F8',
+      marginBottom: 10,
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 2 },
+          shadowOpacity: 0.06,
+          shadowRadius: 8,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    wardrobeImage: {
+      width: '100%',
+      height: '100%',
+    },
+    wardrobeName: {
+      fontSize: 13,
+      fontWeight: '500',
+      color: '#000000',
+      marginBottom: 2,
+    },
+    wardrobeCategory: {
+      fontSize: 11,
+      color: '#8A8F99',
+    },
+    addItemCard: {
+      width: 140,
+      height: 140,
+      borderRadius: 16,
+      backgroundColor: '#FFFFFF',
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1.5,
+      borderColor: 'rgba(0, 0, 0, 0.08)',
+      borderStyle: 'dashed',
+      marginRight: 28,
+    },
+    addItemIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: '#F5F6F8',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    addItemText: {
+      fontSize: 13,
+      color: '#8A8F99',
+      fontWeight: '500',
+    },
+    
+    // Today's outfit - premium minimal with empty state
+    todaySection: {
+      marginHorizontal: 28,
+      marginBottom: 32,
+    },
+    todayCard: {
+      backgroundColor: '#FFF5F0',
+      borderRadius: 20,
+      padding: 24,
+      borderWidth: 2,
+      borderColor: '#F97316',
+      borderStyle: 'dashed',
+      alignItems: 'center',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#F97316',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+        },
+        android: {
+          elevation: 2,
+        },
+      }),
+    },
+    todayEmptyIcon: {
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: '#FFFFFF',
+      justifyContent: 'center',
+      alignItems: 'center',
+      marginBottom: 16,
+    },
+    todayEmptyTitle: {
+      fontSize: 16,
+      fontWeight: '600',
+      color: '#000000',
+      marginBottom: 8,
+      textAlign: 'center',
+    },
+    todayEmptySubtitle: {
+      fontSize: 14,
+      color: '#6B7280',
+      marginBottom: 20,
+      textAlign: 'center',
+      lineHeight: 20,
+    },
+    todayCreateButton: {
+      backgroundColor: '#F97316',
+      borderRadius: 14,
+      paddingHorizontal: 24,
+      paddingVertical: 12,
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    todayCreateButtonText: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: '#FFFFFF',
+      marginRight: 6,
+    },
+    
+    // Premium floating action button
+    fab: {
+      position: 'absolute',
+      bottom: 24,
+      right: 28,
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      backgroundColor: '#000000',
+      justifyContent: 'center',
+      alignItems: 'center',
+      ...Platform.select({
+        ios: {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 8 },
+          shadowOpacity: 0.25,
+          shadowRadius: 16,
+        },
+        android: {
+          elevation: 10,
+        },
+      }),
+    },
+  };
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    const name = firstName || 'there';
+    let timeOfDay;
+    
+    if (hour < 12) timeOfDay = 'Good morning';
+    else if (hour < 18) timeOfDay = 'Good afternoon';
+    else timeOfDay = 'Good evening';
+    
+    return { timeOfDay, name };
+  };
+
+  const formatTime = () => {
+    const options = { weekday: 'long', month: 'long', day: 'numeric' };
+    return new Date().toLocaleDateString('en-US', options);
+  };
+
+  const greetingData = getGreeting();
 
   return (
     <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+      
       <ScrollView 
+        style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
+        {/* Premium Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Good morning!</Text>
-            <Text style={styles.title}>Let's style your day</Text>
-          </View>
-          <View style={styles.headerActions}>
+          <View style={styles.headerContent}>
+            <View style={styles.greetingContainer}>
+              <Text style={styles.greetingTime}>{formatTime()}</Text>
+              <Text style={styles.greeting}>
+                {greetingData.timeOfDay},{' '}
+                <Text style={styles.greetingBold}>{greetingData.name}</Text>
+              </Text>
+            </View>
             <TouchableOpacity 
               style={styles.profileButton}
               onPress={() => navigation.navigate('Profile')}
@@ -120,214 +583,201 @@ const HomeScreen = ({ navigation }) => {
               {profileImage ? (
                 <Image source={{ uri: profileImage }} style={styles.profileImage} />
               ) : (
-                <Ionicons name="person-circle-outline" size={32} color="#333333" />
+                <Ionicons name="person-outline" size={20} color="#8A8F99" />
               )}
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.logoutButton}
-              onPress={async () => {
-                await logout();
-              }}
-            >
-              <Ionicons name="log-out-outline" size={24} color="#333333" />
-            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Quick Actions Card */}
-        <View style={styles.quickActionsCard}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('AddItem')}
-              activeOpacity={0.7}
-            >
-              <View style={styles.actionIconContainer}>
-                <Ionicons name="camera-outline" size={24} color="#F97316" />
+        {/* Hero Card with Gradient Strip */}
+        <View style={styles.heroSection}>
+          <TouchableOpacity 
+            style={styles.heroCard}
+            onPress={() => navigation.navigate('BeforeYouBuy')}
+            activeOpacity={0.95}
+          >
+            <LinearGradient
+              colors={['#F97316', '#EC4899']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={{ height: 4 }}
+            />
+            <View style={styles.heroContent}>
+              <View style={styles.heroLeft}>
+                <Text style={styles.heroTitle}>Smart Shopping Assistant</Text>
+                <Text style={styles.heroSubtitle}>
+                  AI-powered analysis before you buy
+                </Text>
+                <TouchableOpacity 
+                  style={styles.heroButton}
+                  onPress={() => navigation.navigate('BeforeYouBuy')}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.heroButtonText}>Start Scanning</Text>
+                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                </TouchableOpacity>
               </View>
-              <Text style={styles.actionTitle}>Add Item</Text>
-              <Text style={styles.actionSubtitle}>Snap & catalog</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={styles.actionButton}
-              onPress={() => navigation.navigate('OutfitSwiper')}
-              activeOpacity={0.7}
-            >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#E0E7FF' }]}>
-                <Ionicons name="heart-outline" size={24} color="#4F46E5" />
+              <View style={styles.heroIconContainer}>
+                <Ionicons name="scan" size={28} color="#F97316" />
               </View>
-              <Text style={styles.actionTitle}>Swipe Outfits</Text>
-              <Text style={styles.actionSubtitle}>Find your style</Text>
-            </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </View>
 
+        {/* Premium Action Cards */}
+        <View style={styles.actionSection}>
+          {/* Wardrobe CTA - Clean White Card with Gradient Icon */}
+          <View style={styles.wardrobeActionCard}>
             <TouchableOpacity 
-              style={styles.actionButton}
+              style={styles.wardrobeActionContent}
+              onPress={() => navigation.navigate('Wardrobe')}
+              activeOpacity={0.95}
+            >
+              <View style={styles.wardrobeActionLeft}>
+                <LinearGradient
+                  colors={['#F97316', '#EC4899']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.wardrobeIconContainer}
+                >
+                  <Ionicons name="grid" size={28} color="#FFFFFF" />
+                </LinearGradient>
+                <View style={styles.wardrobeTextContainer}>
+                  <Text style={styles.wardrobeActionTitle}>Your Wardrobe</Text>
+                  <Text style={styles.wardrobeActionSubtitle}>
+                    24 items in your collection
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity 
+                style={styles.wardrobeActionButton}
+                onPress={() => navigation.navigate('Wardrobe')}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.wardrobeActionButtonText}>View All</Text>
+                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+              </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
+
+          {/* Other Action Cards */}
+          <View style={styles.actionRow}>
+            <TouchableOpacity 
+              style={styles.actionCard}
               onPress={() => navigation.navigate('Recommendations')}
-              activeOpacity={0.7}
+              activeOpacity={0.95}
             >
-              <View style={[styles.actionIconContainer, { backgroundColor: '#FFE4EC' }]}>
-                <Ionicons name="sparkles" size={24} color="#EC4899" />
-              </View>
-              <Text style={styles.actionTitle}>Get Styled</Text>
-              <Text style={styles.actionSubtitle}>AI suggestions</Text>
+              <LinearGradient
+                colors={['#F97316', '#EC4899']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionIconWrapper}
+              >
+                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.actionTitle}>AI Stylist</Text>
+              <Text style={styles.actionDescription}>
+                Personalized outfit recommendations
+              </Text>
             </TouchableOpacity>
-          </View>
-        </View>
 
-        {/* Stats Overview */}
-        <View style={styles.statsContainer}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>24</Text>
-            <Text style={styles.statLabel}>Items</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>8</Text>
-            <Text style={styles.statLabel}>Outfits</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>3</Text>
-            <Text style={styles.statLabel}>This Week</Text>
-          </View>
-        </View>
-
-        {/* Before You Buy Scanner - UPDATED */}
-        <View style={styles.scannerSection}>
-          <View style={styles.scannerCard}>
-            <View style={styles.scannerHeader}>
-              <View style={styles.scannerIconContainer}>
-                <Ionicons name="scan-outline" size={32} color="#F97316" />
-              </View>
-              <View style={styles.scannerTextContainer}>
-                <Text style={styles.scannerTitle}>Before You Buy</Text>
-                <Text style={styles.scannerSubtitle}>AI wardrobe compatibility check</Text>
-              </View>
-            </View>
-            
-            <Text style={styles.scannerDescription}>
-              Scan items in-store to see if they match your existing wardrobe
-            </Text>
-            
             <TouchableOpacity 
-              style={styles.scanButton}
-              onPress={() => navigation.navigate('BeforeYouBuy')}
-              activeOpacity={0.8}
+              style={styles.actionCard}
+              onPress={() => navigation.navigate('WeeklyPlanner')}
+              activeOpacity={0.95}
             >
-              <Ionicons name="scan" size={20} color="#FFFFFF" />
-              <Text style={styles.scanButtonText}>Check Compatibility</Text>
+              <LinearGradient
+                colors={['#818CF8', '#C084FC']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.actionIconWrapper}
+              >
+                <Ionicons name="calendar" size={20} color="#FFFFFF" />
+              </LinearGradient>
+              <Text style={styles.actionTitle}>Weekly Planner</Text>
+              <Text style={styles.actionDescription}>
+                Organize your week in style
+              </Text>
             </TouchableOpacity>
-            
-            <View style={styles.scannerFeatures}>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.featureText}>Instant match check</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.featureText}>Versatility scoring</Text>
-              </View>
-              <View style={styles.featureItem}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.featureText}>Smart recommendations</Text>
-              </View>
-            </View>
           </View>
         </View>
 
-        {/* Recent Items */}
-        <View style={styles.recentSection}>
+        {/* Today's Outfit - Empty State */}
+        <View style={styles.todaySection}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Today's Look</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.todayCard}
+            onPress={() => navigation.navigate('WeeklyPlanner')}
+            activeOpacity={0.95}
+          >
+            <View style={styles.todayEmptyIcon}>
+              <Ionicons name="sparkles" size={28} color="#F97316" />
+            </View>
+            <Text style={styles.todayEmptyTitle}>No Outfit Created for Today</Text>
+            <Text style={styles.todayEmptySubtitle}>
+              Let's put together something amazing!{'\n'}
+              Create your perfect outfit in seconds
+            </Text>
+            <View style={styles.todayCreateButton}>
+              <Text style={styles.todayCreateButtonText}>Create Outfit</Text>
+              <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+            </View>
+          </TouchableOpacity>
+        </View>
+
+        {/* Premium Wardrobe Preview */}
+        <View style={styles.wardrobeSection}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Recent Items</Text>
-            <TouchableOpacity 
-              onPress={() => navigation.navigate('Wardrobe')}
-              style={styles.seeAllButton}
-            >
-              <Text style={styles.seeAllText}>See all</Text>
-              <Ionicons name="arrow-forward" size={16} color="#F97316" />
+            <TouchableOpacity onPress={() => navigation.navigate('Wardrobe')}>
+              <Text style={styles.sectionLink}>View all</Text>
             </TouchableOpacity>
           </View>
           
           <ScrollView 
-            horizontal
+            horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.recentItemsScroll}
+            contentContainerStyle={styles.wardrobeScroll}
           >
-            {recentItems.map((item) => (
+            {wardrobePreview.map((item) => (
               <TouchableOpacity 
-                key={item.id} 
-                style={styles.recentItem}
-                activeOpacity={0.8}
+                key={item.id}
+                style={styles.wardrobeCard}
+                onPress={() => navigation.navigate('Wardrobe')}
+                activeOpacity={0.95}
               >
-                <Image source={{ uri: item.image }} style={styles.recentItemImage} />
+                <View style={styles.wardrobeImageContainer}>
+                  <Image source={{ uri: item.image }} style={styles.wardrobeImage} />
+                </View>
+                <Text style={styles.wardrobeName} numberOfLines={1}>{item.name}</Text>
+                <Text style={styles.wardrobeCategory}>Recently added</Text>
               </TouchableOpacity>
             ))}
             
             <TouchableOpacity 
-              style={styles.addMoreItem}
+              style={styles.addItemCard}
               onPress={() => navigation.navigate('AddItem')}
+              activeOpacity={0.95}
             >
-              <Ionicons name="add" size={28} color="#9CA3AF" />
+              <View style={styles.addItemIcon}>
+                <Ionicons name="add" size={24} color="#8A8F99" />
+              </View>
+              <Text style={styles.addItemText}>Add Item</Text>
             </TouchableOpacity>
-          </ScrollView>
-        </View>
-
-        {/* Weekly Outfit Planner */}
-        <View style={styles.weeklyPlannerSection}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Weekly Outfit Planner</Text>
-            <TouchableOpacity 
-              style={styles.seeAllButton}
-              onPress={() => {
-                console.log('Plan All button pressed');
-                navigation.navigate('WeeklyPlanner');
-              }}
-            >
-              <Text style={styles.seeAllText}>Plan All</Text>
-              <Ionicons name="arrow-forward" size={16} color="#F97316" />
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView 
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.weeklyPlannerScroll}
-          >
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => {
-              const isToday = index === adjustedTodayIndex;
-              return (
-                <TouchableOpacity 
-                  key={day} 
-                  style={[styles.dayCard, isToday && styles.dayCardToday]}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.dayLabel, isToday && styles.dayLabelToday]}>{day}</Text>
-                  <Text style={styles.dayDate}>{weekDates[index]}</Text>
-                  
-                  {weeklyOutfits[index] ? (
-                    <View style={styles.outfitPreview}>
-                      <Image 
-                        source={{ uri: weeklyOutfits[index].image }} 
-                        style={styles.outfitImage}
-                      />
-                      <Text style={styles.outfitLabel}>
-                        {weeklyOutfits[index].style}
-                      </Text>
-                    </View>
-                  ) : (
-                    <TouchableOpacity style={styles.addOutfitButton}>
-                      <View style={styles.addOutfitIcon}>
-                        <Ionicons name="add" size={24} color="#F97316" />
-                      </View>
-                      <Text style={styles.addOutfitText}>Plan</Text>
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
           </ScrollView>
         </View>
       </ScrollView>
+
+      {/* Premium Floating Action Button */}
+      <TouchableOpacity 
+        style={styles.fab}
+        onPress={() => navigation.navigate('AddItem')}
+        activeOpacity={0.95}
+      >
+        <Ionicons name="camera" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </SafeAreaView>
   );
 };

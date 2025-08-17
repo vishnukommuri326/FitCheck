@@ -15,7 +15,7 @@ if (process.env.NODE_ENV !== 'production') {
   require('dotenv').config({ path: require('path').join(__dirname, '../.env') });
 }
 
-// 🆕 REPLICATE CONFIGURATION
+
 const REPLICATE_MODELS = {
   // Primary model - Fast and cheap
   flux_schnell: {

@@ -1,72 +1,74 @@
 import { StyleSheet, Dimensions, Platform } from 'react-native';
 
 const { width } = Dimensions.get('window');
-const itemWidth = (width - 48) / 2; // Two items per row with spacing
+const itemWidth = (width - 56) / 2; // Two items per row with spacing
 
 export default StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFBF5', // Warm cream background
+    backgroundColor: '#FAFBFC', // Premium gray-white matching home
   },
   
-  // Header Styles
+  // Premium Header Styles
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 28,
     paddingTop: 20,
     paddingBottom: 16,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#333333',
-    letterSpacing: -0.5,
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  headerButton: {
+  backButton: {
     width: 44,
     height: 44,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-      },
-      android: {
-        elevation: 2,
-      },
-    }),
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: '600',
+    color: '#000000',
+    letterSpacing: -0.5,
+  },
+  addIconButton: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  gradientButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   
-  // Search Bar Styles
+  // Premium Search Bar Styles
   searchContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 16,
+    paddingHorizontal: 28,
+    paddingTop: 20,
+    paddingBottom: 12,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    height: 48,
+    height: 52,
     gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
       },
       android: {
         elevation: 2,
@@ -76,25 +78,22 @@ export default StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 16,
-    color: '#333333',
+    color: '#000000',
   },
   
-  // Categories Styles
+  // Premium Categories Styles
   categoriesContainer: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingVertical: 16,
   },
   categoryChip: {
-    minWidth: 80,
-    height: 36, // Add this
-    justifyContent: 'center', // Add this
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
     backgroundColor: '#FFFFFF',
     borderRadius: 20,
-    marginRight: 8,
+    marginRight: 10,
     borderWidth: 1,
-    borderColor: '#E2E5EA',
+    borderColor: 'rgba(0, 0, 0, 0.06)',
   },
   categoryChipActive: {
     backgroundColor: '#F97316',
@@ -109,17 +108,22 @@ export default StyleSheet.create({
     color: '#FFFFFF',
   },
   
-  // Stats Bar Styles
+  // Premium Stats Bar Styles
   statsBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    marginBottom: 10,
+    paddingHorizontal: 28,
+    marginBottom: 16,
   },
   statsText: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#8A8F99',
+  },
+  statsNumber: {
+    fontWeight: '600',
+    color: '#000000',
+    fontSize: 16,
   },
   sortButton: {
     flexDirection: 'row',
@@ -132,16 +136,16 @@ export default StyleSheet.create({
     color: '#F97316',
   },
   
-  // Grid Styles
+  // Premium Grid Styles
   listContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 20,
     paddingBottom: 100,
   },
   row: {
     justifyContent: 'space-between',
   },
   
-  // Item Card Styles
+  // Premium Item Card Styles
   swipeableContainer: {
     position: 'relative',
   },
@@ -150,33 +154,34 @@ export default StyleSheet.create({
     margin: 8,
     borderRadius: 16,
     width: itemWidth,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.04)',
+    overflow: 'hidden',
     ...Platform.select({
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.06,
         shadowRadius: 8,
       },
       android: {
-        elevation: 4,
+        elevation: 3,
       },
     }),
   },
   itemImage: {
     width: '100%',
     height: itemWidth * 1.2,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: '#F5F6F8',
   },
   favoriteButton: {
     position: 'absolute',
     top: 12,
     right: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -184,31 +189,15 @@ export default StyleSheet.create({
     padding: 12,
   },
   itemName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333333',
+    color: '#000000',
     marginBottom: 4,
+    letterSpacing: -0.2,
   },
   itemDetails: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  colorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  colorDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: '#E2E5EA',
-  },
-  colorText: {
     fontSize: 12,
-    color: '#9CA3AF',
+    color: '#8A8F99',
   },
   
   // Swipe Action Styles
@@ -249,67 +238,77 @@ export default StyleSheet.create({
     marginTop: 4,
   },
   
-  // Empty State Styles
+  // Premium Empty State Styles
   emptyState: {
-  
+    flex: 1,
     alignItems: 'center',
-    paddingTop: 24, // Add padding from the top
+    justifyContent: 'center',
     paddingHorizontal: 48,
-    paddingBottom: 240,
+    paddingBottom: 120,
+  },
+  emptyIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#F5F6F8',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
   },
   emptyTitle: {
     fontSize: 20,
     fontWeight: '600',
-    color: '#333333',
-    marginTop: 16,
+    color: '#000000',
     marginBottom: 8,
+    letterSpacing: -0.3,
   },
   emptySubtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#8A8F99',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 32,
+    lineHeight: 20,
   },
   addButton: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     backgroundColor: '#F97316',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 24,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 16,
   },
   addButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   
-  // Floating Action Button
+  // Premium Floating Action Button
   fab: {
     position: 'absolute',
     bottom: 24,
-    right: 24,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#EC4899',
+    right: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#000000',
     justifyContent: 'center',
     alignItems: 'center',
     ...Platform.select({
       ios: {
-        shadowColor: '#EC4899',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.25,
+        shadowRadius: 16,
       },
       android: {
-        elevation: 8,
+        elevation: 10,
       },
     }),
   },
   
-  // Modal Styles
+  // Premium Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
@@ -326,9 +325,9 @@ export default StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E5EA',
+    padding: 24,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0, 0, 0, 0.05)',
   },
   closeButton: {
     width: 40,
@@ -339,7 +338,8 @@ export default StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#333333',
+    color: '#000000',
+    letterSpacing: -0.3,
   },
   favoriteButtonModal: {
     width: 40,
@@ -349,59 +349,72 @@ export default StyleSheet.create({
   },
   modalImage: {
     width: '100%',
-    height: 300,
-    backgroundColor: '#F3F4F6',
+    height: 320,
+    backgroundColor: '#F5F6F8',
   },
   modalInfo: {
-    padding: 24,
+    padding: 28,
   },
   modalItemName: {
     fontSize: 24,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 16,
+    fontWeight: '600',
+    color: '#000000',
+    marginBottom: 20,
+    letterSpacing: -0.5,
   },
   modalDetailsRow: {
     flexDirection: 'row',
     justifyContent: 'space-around',
-    backgroundColor: '#FFFBF5',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#FAFBFC',
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 24,
   },
   modalDetailItem: {
     alignItems: 'center',
+    flex: 1,
+  },
+  modalDetailDivider: {
+    width: 0.5,
+    height: 40,
+    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+    alignSelf: 'center',
   },
   modalDetailLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
+    fontSize: 11,
+    color: '#8A8F99',
+    marginBottom: 8,
+    fontWeight: '500',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   modalDetailValue: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333333',
+    color: '#000000',
   },
   modalColorRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   modalColorDot: {
     width: 16,
     height: 16,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E2E5EA',
+    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   modalSection: {
     marginBottom: 24,
   },
   modalSectionTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#333333',
+    color: '#000000',
     marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   modalTagsContainer: {
     flexDirection: 'row',
@@ -409,21 +422,17 @@ export default StyleSheet.create({
     gap: 8,
   },
   modalTag: {
-    backgroundColor: '#FFF1E6',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
+    backgroundColor: '#FFF5F0',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
     marginRight: 8,
     marginBottom: 8,
   },
   modalTagText: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#F97316',
-  },
-  modalNotes: {
-    fontSize: 14,
-    color: '#6B7280',
-    lineHeight: 20,
+    fontWeight: '500',
   },
   modalActions: {
     flexDirection: 'row',
@@ -436,122 +445,99 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#EC4899',
+    backgroundColor: '#F97316',
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 14,
   },
   modalEditButton: {
-    backgroundColor: '#FFF1E6',
-  },
-  addToPlannerButton: {
-    backgroundColor: '#F97316',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F97316',
   },
   modalActionText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  input: {
-    backgroundColor: '#F3F4F6',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    fontSize: 16,
-    color: '#333333',
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E2E5EA',
-  },
+  
+  // Edit Modal Styles
   saveButton: {
-    backgroundColor: '#F97316',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
   saveButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#F97316',
+  },
+  editImagePreview: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F5F6F8',
+    marginBottom: 24,
+  },
+  editForm: {
+    padding: 28,
+    paddingTop: 0,
+  },
+  inputContainer: {
+    marginBottom: 24,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: '500',
+    color: '#8A8F99',
+    marginBottom: 10,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  textInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    fontSize: 16,
+    color: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  typeSelector: {
+    marginTop: 8,
+  },
+  typeChip: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.06)',
+  },
+  typeChipActive: {
+    backgroundColor: '#F97316',
+    borderColor: '#F97316',
+  },
+  typeChipText: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#6B7280',
+  },
+  typeChipTextActive: {
     color: '#FFFFFF',
   },
-  // Edit Modal Styles
-saveButton: {
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-},
-saveButtonText: {
-  fontSize: 16,
-  fontWeight: '600',
-  color: '#F97316',
-},
-editImagePreview: {
-  width: '100%',
-  height: 200,
-  borderRadius: 12,
-  backgroundColor: '#F3F4F6',
-  marginBottom: 24,
-},
-editForm: {
-  padding: 24,
-  paddingTop: 0,
-},
-inputContainer: {
-  marginBottom: 20,
-},
-inputLabel: {
-  fontSize: 14,
-  fontWeight: '500',
-  color: '#6B7280',
-  marginBottom: 8,
-},
-textInput: {
-  backgroundColor: '#F7F8FA',
-  borderRadius: 12,
-  paddingHorizontal: 16,
-  paddingVertical: 14,
-  fontSize: 16,
-  color: '#333333',
-  borderWidth: 1,
-  borderColor: '#E2E5EA',
-},
-typeSelector: {
-  marginTop: 8,
-},
-typeChip: {
-  paddingHorizontal: 16,
-  paddingVertical: 8,
-  backgroundColor: '#F7F8FA',
-  borderRadius: 20,
-  marginRight: 8,
-  borderWidth: 1,
-  borderColor: '#E2E5EA',
-},
-typeChipActive: {
-  backgroundColor: '#F97316',
-  borderColor: '#F97316',
-},
-typeChipText: {
-  fontSize: 14,
-  fontWeight: '500',
-  color: '#6B7280',
-},
-typeChipTextActive: {
-  color: '#FFFFFF',
-},
-deleteButton: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-  backgroundColor: '#FEE2E2',
-  paddingVertical: 14,
-  borderRadius: 12,
-  marginTop: 24,
-},
-deleteButtonText: {
-  fontSize: 16,
-  fontWeight: '500',
-  color: '#EF4444',
-},
+  deleteButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#FEE2E2',
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginTop: 24,
+  },
+  deleteButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: '#EF4444',
+  },
 });

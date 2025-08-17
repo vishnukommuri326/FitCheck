@@ -18,6 +18,7 @@ import ScannerScreen from '../screens/ScannerScreen';
 import OutfitSwiper from '../screens/OutfitSwiperScreen.js';
 import BeforeYouBuy from '../screens/BeforeYouBuyScreen.js';
 import BeforeYouBuyScreen from '../screens/BeforeYouBuyScreen.js';
+import CustomCameraScreen from '../screens/CustomCameraScreen.js';
 
 const Stack = createStackNavigator();
 
@@ -42,6 +43,7 @@ const AppStack = () => (
     <Stack.Screen name="Scanner" component={ScannerScreen} options={{ headerShown: false }} />
     <Stack.Screen name="OutfitSwiper" component={OutfitSwiper} options={{ headerShown: false }} />
     <Stack.Screen name="BeforeYouBuy" component={BeforeYouBuyScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="CustomCamera" component={CustomCameraScreen} options={{ headerShown: false,presentation: 'fullScreenModal' }} />
   </Stack.Navigator>
 );
 

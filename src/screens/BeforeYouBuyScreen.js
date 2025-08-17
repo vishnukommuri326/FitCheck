@@ -28,6 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { addGarment } from '../services/firebase';
 import { v4 as uuidv4 } from 'uuid';
 import SuccessModal from '../components/SuccessModal.js';
+import { useRoute } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -87,6 +88,7 @@ const parseStyleAdviceJSON = (rawResponse) => {
 
 const BeforeYouBuyScreen = ({ navigation }) => {
   const { user } = useAuth();
+  const route = useRoute();
   const [imageUri, setImageUri] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState(null);
@@ -154,23 +156,21 @@ const BeforeYouBuyScreen = ({ navigation }) => {
   };
 
   const handleCamera = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permission Required', 'Camera permission is required to scan items.');
-      return;
-    }
+  // Navigate to custom camera screen
+  navigation.navigate('CustomCamera', {
+    source: 'BeforeYouBuy'
+  });
+};
 
-    const result = await ImagePicker.launchCameraAsync({
-      allowsEditing: true,
-      aspect: [3, 4],
-      quality: 0.8,
-    });
-
-    if (!result.canceled) {
-      setImageUri(result.assets[0].uri);
-      analyzeItem(result.assets[0].uri);
-    }
-  };
+// Also add this useEffect to handle the returned image:
+useEffect(() => {
+  if (route.params?.imageUri) {
+    setImageUri(route.params.imageUri);
+    analyzeItem(route.params.imageUri);
+    // Clear the param to avoid re-setting on navigation
+    navigation.setParams({ imageUri: undefined });
+  }
+}, [route.params?.imageUri]);
 
   const handleGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();

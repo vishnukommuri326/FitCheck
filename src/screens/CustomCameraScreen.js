@@ -9,8 +9,9 @@ import {
   Image,
   SafeAreaView,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as MediaLibrary from 'expo-media-library';
 import * as Haptics from 'expo-haptics';
 import { BlurView } from 'expo-blur';
@@ -32,7 +33,7 @@ const CAPTURE_BUTTON_RING_SIZE = 95;
 const CustomCameraScreen = ({ navigation, route }) => {
   const { source } = route.params || {};
   
-  // Camera permissions using the new hook
+  // Camera permissions
   const [permission, requestPermission] = useCameraPermissions();
   const [mediaLibraryPermission, setMediaLibraryPermission] = useState(null);
   
@@ -48,6 +49,7 @@ const CustomCameraScreen = ({ navigation, route }) => {
   const cameraRef = useRef(null);
   const scaleAnim = useSharedValue(1);
   const rotateAnim = useSharedValue(0);
+  const flashAnim = useSharedValue(0);
 
   useEffect(() => {
     (async () => {
@@ -56,6 +58,7 @@ const CustomCameraScreen = ({ navigation, route }) => {
     })();
   }, []);
 
+  // Animations
   const captureButtonAnimatedStyle = useAnimatedStyle(() => {
     return {
       transform: [{ scale: scaleAnim.value }],
@@ -68,6 +71,12 @@ const CustomCameraScreen = ({ navigation, route }) => {
     };
   });
 
+  const flashOverlayStyle = useAnimatedStyle(() => {
+    return {
+      opacity: flashAnim.value,
+    };
+  });
+
   const takePicture = async () => {
     if (cameraRef.current) {
       try {
@@ -75,6 +84,12 @@ const CustomCameraScreen = ({ navigation, route }) => {
         scaleAnim.value = withSequence(
           withTiming(0.9, { duration: 100 }),
           withSpring(1, { damping: 15, stiffness: 400 })
+        );
+        
+        // Flash animation
+        flashAnim.value = withSequence(
+          withTiming(0.7, { duration: 50 }),
+          withTiming(0, { duration: 200 })
         );
         
         // Haptic feedback
@@ -98,7 +113,7 @@ const CustomCameraScreen = ({ navigation, route }) => {
   const savePhoto = async () => {
     if (capturedPhoto) {
       try {
-        // Navigate back with the photo
+        // Navigate back with the photo based on source
         if (source === 'AddItem') {
           navigation.navigate('AddItem', { imageUri: capturedPhoto.uri });
         } else if (source === 'BeforeYouBuy') {
@@ -109,9 +124,14 @@ const CustomCameraScreen = ({ navigation, route }) => {
         
         // Optional: Save to media library
         if (mediaLibraryPermission) {
-          await MediaLibrary.saveToLibraryAsync(capturedPhoto.uri);
-          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          try {
+            await MediaLibrary.saveToLibraryAsync(capturedPhoto.uri);
+          } catch (err) {
+            console.log('Could not save to library:', err);
+          }
         }
+        
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (error) {
         console.error('Error saving photo:', error);
       }
@@ -174,7 +194,8 @@ const CustomCameraScreen = ({ navigation, route }) => {
   if (!permission) {
     return (
       <View style={styles.container}>
-        <Text style={styles.permissionText}>Requesting camera permission...</Text>
+        <ActivityIndicator size="large" color="#F97316" />
+        <Text style={styles.permissionText}>Loading camera...</Text>
       </View>
     );
   }
@@ -182,16 +203,29 @@ const CustomCameraScreen = ({ navigation, route }) => {
   if (!permission.granted) {
     return (
       <View style={styles.container}>
-        <Text style={styles.permissionText}>Camera access is required</Text>
-        <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.permissionButtonText}>Grant Permission</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.permissionButton, { marginTop: 10 }]} 
-          onPress={() => navigation.goBack()}
-        >
-          <Text style={styles.permissionButtonText}>Go Back</Text>
-        </TouchableOpacity>
+        <View style={styles.permissionContainer}>
+          <Ionicons name="camera-outline" size={64} color="#F97316" />
+          <Text style={styles.permissionTitle}>Camera Access Required</Text>
+          <Text style={styles.permissionText}>
+            To scan items and add to your wardrobe, we need camera access
+          </Text>
+          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+            <LinearGradient
+              colors={['#F97316', '#EC4899']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.permissionGradient}
+            >
+              <Text style={styles.permissionButtonText}>Grant Permission</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={() => navigation.goBack()}
+          >
+            <Text style={styles.cancelButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -202,6 +236,9 @@ const CustomCameraScreen = ({ navigation, route }) => {
       <SafeAreaView style={styles.container}>
         <StatusBar style="light" />
         <Image source={{ uri: capturedPhoto.uri }} style={styles.previewImage} />
+        
+        {/* Flash overlay for animation */}
+        <Animated.View style={[styles.flashOverlay, flashOverlayStyle]} pointerEvents="none" />
         
         <View style={styles.previewTopControls}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topButton}>
@@ -214,6 +251,7 @@ const CustomCameraScreen = ({ navigation, route }) => {
         <View style={styles.previewBottomControls}>
           <TouchableOpacity onPress={retakePhoto} style={styles.previewButton}>
             <BlurView intensity={80} style={styles.previewButtonBlur}>
+              <Ionicons name="refresh" size={20} color="white" />
               <Text style={styles.previewButtonText}>Retake</Text>
             </BlurView>
           </TouchableOpacity>
@@ -225,6 +263,7 @@ const CustomCameraScreen = ({ navigation, route }) => {
               end={{ x: 1, y: 1 }}
               style={styles.saveButtonGradient}
             >
+              <Ionicons name="checkmark" size={20} color="white" />
               <Text style={styles.previewButtonText}>Use Photo</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -243,38 +282,45 @@ const CustomCameraScreen = ({ navigation, route }) => {
         facing={facing}
         enableTorch={enableTorch}
       >
+        {/* Flash overlay for animation */}
+        <Animated.View style={[styles.flashOverlay, flashOverlayStyle]} pointerEvents="none" />
+        
         {renderGrid()}
         
-        <View style={styles.topControls}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topButton}>
-            <BlurView intensity={80} style={styles.blurButton}>
-              <Ionicons name="close" size={28} color="white" />
-            </BlurView>
-          </TouchableOpacity>
-          
-          <View style={styles.topRightControls}>
-            <TouchableOpacity onPress={toggleFlash} style={styles.topButton}>
+        {/* Top Controls */}
+        <SafeAreaView style={styles.topControlsContainer}>
+          <View style={styles.topControls}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.topButton}>
               <BlurView intensity={80} style={styles.blurButton}>
-                <Ionicons
-                  name={enableTorch ? 'flash' : 'flash-off'}
-                  size={24}
-                  color="white"
-                />
+                <Ionicons name="close" size={28} color="white" />
               </BlurView>
             </TouchableOpacity>
             
-            <TouchableOpacity onPress={toggleGrid} style={styles.topButton}>
-              <BlurView intensity={80} style={styles.blurButton}>
-                <Ionicons
-                  name="grid-outline"
-                  size={24}
-                  color={showGrid ? '#F97316' : 'white'}
-                />
-              </BlurView>
-            </TouchableOpacity>
+            <View style={styles.topRightControls}>
+              <TouchableOpacity onPress={toggleFlash} style={styles.topButton}>
+                <BlurView intensity={80} style={styles.blurButton}>
+                  <Ionicons
+                    name={enableTorch ? 'flash' : 'flash-off'}
+                    size={24}
+                    color={enableTorch ? '#F97316' : 'white'}
+                  />
+                </BlurView>
+              </TouchableOpacity>
+              
+              <TouchableOpacity onPress={toggleGrid} style={styles.topButton}>
+                <BlurView intensity={80} style={styles.blurButton}>
+                  <Ionicons
+                    name="grid-outline"
+                    size={24}
+                    color={showGrid ? '#F97316' : 'white'}
+                  />
+                </BlurView>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        </SafeAreaView>
         
+        {/* Bottom Controls */}
         <View style={styles.bottomControls}>
           <TouchableOpacity style={styles.sideButton}>
             <View style={styles.placeholder} />
@@ -295,12 +341,12 @@ const CustomCameraScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
         
-        {/* Optional: Add a tip at the bottom */}
+        {/* Tip at the bottom */}
         <View style={styles.tipContainer}>
           <Text style={styles.tipText}>
             {source === 'BeforeYouBuy' 
-              ? 'Center the item in frame' 
-              : 'Take a clear photo of your clothing'}
+              ? 'Center the item in frame for best analysis' 
+              : 'Take a clear photo of your clothing item'}
           </Text>
         </View>
       </CameraView>
@@ -319,14 +365,32 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
   },
-  topControls: {
+  
+  // Flash overlay
+  flashOverlay: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 30,
-    left: 20,
-    right: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'white',
+    zIndex: 1000,
+  },
+  
+  // Top controls
+  topControlsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  topControls: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === 'ios' ? 10 : 30,
   },
   topRightControls: {
     flexDirection: 'row',
@@ -343,6 +407,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
+  
+  // Bottom controls
   bottomControls: {
     position: 'absolute',
     bottom: 80,
@@ -386,6 +452,8 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
   },
+  
+  // Grid
   gridContainer: {
     position: 'absolute',
     top: 0,
@@ -410,6 +478,8 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.3)',
   },
+  
+  // Preview screen
   previewImage: {
     flex: 1,
     width: '100%',
@@ -433,11 +503,16 @@ const styles = StyleSheet.create({
   previewButton: {
     borderRadius: 30,
     overflow: 'hidden',
+    minWidth: 140,
   },
   previewButtonBlur: {
     paddingHorizontal: 30,
     paddingVertical: 15,
     backgroundColor: 'rgba(0,0,0,0.5)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
   },
   previewButtonText: {
     color: 'white',
@@ -447,23 +522,55 @@ const styles = StyleSheet.create({
   saveButtonGradient: {
     paddingHorizontal: 30,
     paddingVertical: 15,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  
+  // Permission screen
+  permissionContainer: {
+    padding: 40,
+    alignItems: 'center',
+  },
+  permissionTitle: {
+    color: 'white',
+    fontSize: 24,
+    fontWeight: '600',
+    marginTop: 20,
+    marginBottom: 12,
   },
   permissionText: {
-    color: 'white',
+    color: 'rgba(255,255,255,0.8)',
     fontSize: 16,
-    marginBottom: 20,
+    textAlign: 'center',
+    marginBottom: 32,
+    lineHeight: 22,
   },
   permissionButton: {
-    backgroundColor: '#F97316',
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 25,
+    overflow: 'hidden',
+    marginBottom: 16,
+  },
+  permissionGradient: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
   },
   permissionButtonText: {
     color: 'white',
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: '600',
   },
+  cancelButton: {
+    paddingHorizontal: 32,
+    paddingVertical: 14,
+  },
+  cancelButtonText: {
+    color: 'rgba(255,255,255,0.6)',
+    fontSize: 16,
+  },
+  
+  // Tip container
   tipContainer: {
     position: 'absolute',
     bottom: 30,
@@ -476,6 +583,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     opacity: 0.8,
     textAlign: 'center',
+    paddingHorizontal: 40,
   },
 });
 

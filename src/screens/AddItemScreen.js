@@ -96,7 +96,7 @@ const AddItemScreen = ({ navigation }) => {
       
       const response = await fetch(imageUri);
       const blob = await response.blob();
-      const filename = `temp-analysis/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
+      const filename = `temp-analysis/${user.uid}/${Date.now()}-${Math.random().toString(36).substring(7)}.jpg`;
       const storageRef = ref(storage, filename);
       await uploadBytes(storageRef, blob);
       const publicImageUrl = await getDownloadURL(storageRef);

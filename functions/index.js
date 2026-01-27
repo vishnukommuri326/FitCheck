@@ -11,6 +11,7 @@ const migration = require('./src/migration');
 const pineconeSync = require('./src/pinecone-sync');
 const outfitInspiration = require('./src/outfit-inspiration'); 
 const aiStylistChat = require('./src/ai-stylist-chat');
+const receiptParser = require('./src/receipt-parser');
 
 module.exports = {
   // Existing functions
@@ -22,4 +23,5 @@ module.exports = {
   ...pineconeSync,
   ...outfitInspiration,
   ...aiStylistChat,
+  ...receiptParser,
 };
